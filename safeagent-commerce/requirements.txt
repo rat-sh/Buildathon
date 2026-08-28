@@ -1,0 +1,39 @@
+# SafeAgent Commerce — Python dependencies
+# Python 3.12 required
+
+# ── Web Framework ──────────────────────────────────────────────────────────────
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+
+# ── Templating ─────────────────────────────────────────────────────────────────
+jinja2==3.1.4
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.30
+aiosqlite==0.20.0          # async SQLite driver
+alembic==1.13.1
+
+# ── Validation ─────────────────────────────────────────────────────────────────
+pydantic==2.7.4
+pydantic-settings==2.3.1
+
+# ── Payments ───────────────────────────────────────────────────────────────────
+razorpay==1.4.2
+
+# ── LLM ────────────────────────────────────────────────────────────────────────
+openai==1.35.7
+httpx==0.27.0              # for AI buyer demo + async HTTP
+
+# ── Security ───────────────────────────────────────────────────────────────────
+python-multipart==0.0.9   # form data parsing for FastAPI
+cryptography==42.0.8
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+structlog==24.2.0          # structured logging
+ulid-py==1.1.0             # for idempotency key generation
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-asyncio==0.23.7
+httpx==0.27.0              # also used as async test client
