@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  # ── Main FastAPI Application ─────────────────────────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: safeagent_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./safeagent.db}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - AI_BUYER_API_KEY=${AI_BUYER_API_KEY}
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
+    volumes:
+      # Mount DB directory so data persists across container restarts
+      - ./data/db:/app/data/db
+      # Mount products seed file
+      - ./data/products.json:/app/data/products.json:ro
+    depends_on: []
+    networks:
+      - safeagent_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  safeagent_net:
+    driver: bridge
+
+volumes:
+  db_data:
