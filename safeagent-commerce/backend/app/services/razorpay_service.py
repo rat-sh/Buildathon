@@ -32,7 +32,13 @@ class RazorpayService:
         self.webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET
 
         # Initialize official client if real test keys are configured
-        self._is_placeholder = self.key_id.startswith("rzp_test_placeholder") or not self.key_secret or self.key_secret == "placeholder_secret"
+        self._is_placeholder = (
+            "REPLACE_ME" in self.key_id.upper()
+            or "REPLACE_ME" in self.key_secret.upper()
+            or self.key_id.startswith("rzp_test_placeholder")
+            or not self.key_secret
+            or self.key_secret == "placeholder_secret"
+        )
 
         if not self._is_placeholder:
             self.client = razorpay.Client(auth=(self.key_id, self.key_secret))
