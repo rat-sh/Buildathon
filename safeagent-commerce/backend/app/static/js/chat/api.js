@@ -63,3 +63,25 @@ async function apiCheckout(cartId, sessionId) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
+
+async function apiVerifyPayment(razorpay_order_id, razorpay_payment_id, razorpay_signature, sessionId) {
+    /**
+     * Send the three Razorpay tokens to backend for HMAC-SHA256 verification.
+     * KEY_SECRET is never sent here — it lives only on the server.
+     */
+    const res = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+            session_id: sessionId,
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Verification failed" }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+}

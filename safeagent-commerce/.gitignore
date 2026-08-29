@@ -77,3 +77,4 @@ figma/
 *.fig
 design-export/
 design_export/
+backend/.env

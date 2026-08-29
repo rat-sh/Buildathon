@@ -3,7 +3,9 @@
 {% block title %}Shopping — SafeAgent Commerce{% endblock %}
 
 {% block content %}
-<div id="chat-root" class="h-full flex overflow-hidden" data-session-id="{{ session_id }}">
+<div id="chat-root" class="h-full flex overflow-hidden"
+     data-session-id="{{ session_id }}"
+     data-razorpay-key="{{ razorpay_key_id }}">
     <!-- Chat area -->
     <div class="flex-1 flex flex-col min-w-0">
         <!-- Page header -->
@@ -128,6 +130,7 @@
     </aside>
 </div>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="/static/js/chat/utils.js" defer></script>
 <script src="/static/js/chat/api.js" defer></script>
 <script src="/static/js/chat/messages.js" defer></script>
@@ -135,3 +138,4 @@
 <script src="/static/js/chat/checkout.js" defer></script>
 <script src="/static/js/chat/main.js" defer></script>
 {% endblock %}
+

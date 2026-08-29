@@ -24,6 +24,7 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/")
 async def chat_view(request: Request):
     """Render customer AI Shopping Assistant chat interface."""
+    from app.core.config import settings
     session_id = generate_session_id()
     return templates.TemplateResponse(
         request=request,
@@ -31,6 +32,7 @@ async def chat_view(request: Request):
         context={
             "session_id": session_id,
             "active_page": "shopping",
+            "razorpay_key_id": settings.RAZORPAY_KEY_ID,  # Public key only — safe in HTML
         },
     )
 

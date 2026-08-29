@@ -120,6 +120,10 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.cart import router as cart_router
     app.include_router(cart_router, prefix="/chat", tags=["cart"])
 
+    # Payment verify (POST /api/verify-payment) — HMAC signature check after checkout
+    from app.api.payment_verify import router as payment_verify_router
+    app.include_router(payment_verify_router, prefix="/api", tags=["payment"])
+
 
 # ── Application instance ──────────────────────────────────────────────────────
 app = create_app()

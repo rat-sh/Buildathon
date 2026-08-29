@@ -124,7 +124,7 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
 
     if (checkoutState === "approved") {
         btn.style.background = "var(--color-accent)";
-        btn.onclick = () => alert(`💳 Razorpay Order Created!\nOrder ID: ${checkoutData?.razorpay_order_id}\nAmount: ₹${checkoutData?.amount_rupees}\nTest Mode.`);
+        btn.onclick = () => openRazorpayModal(checkoutData);
     } else if (checkoutState === "blocked") {
         btn.style.background = "var(--color-primary)";
         btn.onclick = handleCheckout;
