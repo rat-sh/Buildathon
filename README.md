@@ -5,6 +5,13 @@
 
 ---
 
+## 💡 Quick Note on Natural AI Chat
+> **Add your OpenAI key (`OPENAI_API_KEY=sk-...`) in `.env` for natural ChatGPT-style conversational replies.**
+> The system combines ChatGPT-like conversational tone with real-time Amazon/Flipkart product catalog discovery.
+> Without an API key, the system uses clean, deterministic fallback replies.
+
+---
+
 ## Architecture Overview
 
 ```
