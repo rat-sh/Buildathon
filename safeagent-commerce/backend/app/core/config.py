@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # ── App ───────────────────────────────────────────────────────────────────
     APP_ENV: str = Field(default="development")
     APP_SECRET_KEY: str = Field(default="dev-secret-change-in-production-minimum-32-chars")
-    DEBUG: bool = Field(default=True)
+    DEBUG: bool = Field(default=False)
 
     # ── Database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = Field(

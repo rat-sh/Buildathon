@@ -124,3 +124,22 @@ def test_webhook_invalid_hmac_rejected():
 
     assert response.status_code == 400
     assert "Invalid Razorpay webhook signature" in response.json()["detail"]
+
+
+# ── TEST 5: Simulated signature bypass must never work ───────────────────────
+def test_webhook_simulated_sig_rejected():
+    """Even with DEBUG on, forged simulated_valid_sig must be rejected."""
+    client = TestClient(app)
+
+    headers = {"X-Razorpay-Signature": "simulated_valid_sig"}
+    payload = {
+        "event": "payment.captured",
+        "payload": {
+            "payment": {"entity": {"order_id": "order_fake", "id": "pay_fake"}},
+        },
+    }
+
+    response = client.post("/webhooks/razorpay", json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert "Invalid Razorpay webhook signature" in response.json()["detail"]

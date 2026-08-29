@@ -54,7 +54,6 @@ async def razorpay_webhook(
     # ── STEP 1: Verify HMAC Signature (FAIL FAST) ─────────────────────────────
     webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET
 
-    # If in development with default secret and header is missing, handle gracefully for test payloads
     is_valid_sig = False
     if x_razorpay_signature and webhook_secret:
         is_valid_sig = verify_razorpay_webhook_signature(
@@ -62,10 +61,6 @@ async def razorpay_webhook(
             razorpay_signature=x_razorpay_signature,
             webhook_secret=webhook_secret,
         )
-
-    # In dev mode with dummy test secret, permit test simulation if header is 'simulated_valid_sig'
-    if not is_valid_sig and settings.DEBUG and x_razorpay_signature == "simulated_valid_sig":
-        is_valid_sig = True
 
     if not is_valid_sig:
         logger.warning(
