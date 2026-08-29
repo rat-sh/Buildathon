@@ -94,8 +94,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(health_router)
 
     # Chat (human HTMX path) — Phase 5
-    # from app.api.chat import router as chat_router
-    # app.include_router(chat_router, prefix="/chat", tags=["chat"])
+    from app.api.chat import router as chat_router
+    app.include_router(chat_router, prefix="/chat", tags=["chat"])
 
     # Catalog (AI buyer path) — Phase 5
     # from app.api.catalog import router as catalog_router
