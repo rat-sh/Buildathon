@@ -102,8 +102,8 @@ def _register_routers(app: FastAPI) -> None:
     # app.include_router(catalog_router, prefix="/catalog", tags=["catalog"])
 
     # Webhooks (Razorpay) — Phase 3
-    # from app.api.webhooks import router as webhooks_router
-    # app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
+    from app.api.webhooks import router as webhooks_router
+    app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 
     # Admin audit log — Phase 5
     # from app.api.admin import router as admin_router
