@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Shop — SafeAgent Commerce{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+
+    <!-- Left Column: Chat Window -->
+    <div class="lg:col-span-2 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <!-- Chat Header -->
+        <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/80 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="font-semibold text-sm">Shopping Agent Assistant</span>
+            </div>
+            <span class="text-xs text-slate-400 font-mono" id="session-display">Session: {{ session_id }}</span>
+        </div>
+
+        <!-- Chat Messages Scroll Container -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 max-h-[550px] min-h-[400px]">
+            <!-- Welcome message -->
+            <div class="flex items-start space-x-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0">AI</div>
+                <div class="bg-slate-800 border border-slate-700/80 rounded-2xl rounded-tl-none p-3 text-sm max-w-lg text-slate-200">
+                    Hello! I'm your AI Shopping Assistant. Tell me what you're looking for!
+                    <div class="mt-2 text-xs text-slate-400">
+                        Try typing: <button onclick="fillPrompt('Show me running shoes under ₹4000')" class="text-indigo-400 underline hover:text-indigo-300">"Show me running shoes under ₹4000"</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Form (HTMX powered) -->
+        <div class="p-3 border-t border-slate-800 bg-slate-900/90">
+            <form id="chat-form" class="flex items-center space-x-2" onsubmit="handleSend(event)">
+                <input type="hidden" name="session_id" value="{{ session_id }}">
+                <input type="hidden" name="cart_id" id="active-cart-id" value="">
+                <input type="text" id="user-input" name="message" required
+                       placeholder="Type what you want to buy (e.g., 'running shoes', 'protein bar')..."
+                       class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors shadow-md shadow-indigo-600/30">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Cart Drawer & Validator Status -->
+    <div class="flex flex-col space-y-4">
+
+        <!-- Active Cart Panel -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                    🛒 Your Cart
+                </h3>
+                <span id="cart-item-count" class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0 items</span>
+            </div>
+
+            <!-- Cart Items Container -->
+            <div id="cart-items-container" class="space-y-2 text-sm max-h-60 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-500 italic py-4 text-center">Your cart is currently empty.</p>
+            </div>
+
+            <!-- Cart Total & Checkout Button -->
+            <div class="border-t border-slate-800 pt-3 mt-3">
+                <div class="flex justify-between items-center text-sm font-semibold mb-3">
+                    <span class="text-slate-400">Total:</span>
+                    <span id="cart-total-rupees" class="text-emerald-400 text-base">₹0.00</span>
+                </div>
+                <button id="checkout-btn" disabled onclick="executeCheckout()"
+                        class="w-full bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
+                    🔒 Execute Safe Checkout
+                </button>
+            </div>
+        </div>
+
+        <!-- Safety Architecture Status Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl text-xs space-y-2 text-slate-400">
+            <h4 class="font-semibold text-slate-200 text-sm flex items-center gap-1.5">
+                🛡️ Safety Gate Policy
+            </h4>
+            <ul class="space-y-1.5 list-disc list-inside">
+                <li><strong class="text-slate-300">Deterministic Validator:</strong> Non-bypassable gate</li>
+                <li><strong class="text-slate-300">Price Integrity:</strong> Charged ≤ Catalog price</li>
+                <li><strong class="text-slate-300">Opt-in Addons:</strong> Suggestions need explicit accept</li>
+                <li><strong class="text-slate-300">Per-Tx Limit:</strong> Max ₹5,000 / cart</li>
+                <li><strong class="text-slate-300">Audit Trail:</strong> Immutable JSON log</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let activeCartId = null;
+    let activeCartItems = [];
+    const sessionId = "{{ session_id }}";
+
+    function fillPrompt(text) {
+        document.getElementById('user-input').value = text;
+        document.getElementById('user-input').focus();
+    }
+
+    async function handleSend(e) {
+        e.preventDefault();
+        const input = document.getElementById('user-input');
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        appendUserMessage(msg);
+        input.value = '';
+
+        try {
+            const res = await fetch('/chat/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: msg,
+                    session_id: sessionId,
+                    cart_id: activeCartId
+                })
+            });
+            const data = await res.json();
+            appendBotResponse(data);
+        } catch (err) {
+            appendBotMessage("⚠️ Error communicating with server: " + err.message);
+        }
+    }
+
+    function appendUserMessage(msg) {
+        const container = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = 'flex items-start justify-end space-x-3';
+        div.innerHTML = `
+            <div class="bg-indigo-600 text-white rounded-2xl rounded-tr-none p-3 text-sm max-w-lg shadow-md">
+                ${escapeHtml(msg)}
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function appendBotMessage(text) {
+        const container = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = 'flex items-start space-x-3';
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0">AI</div>
+            <div class="bg-slate-800 border border-slate-700/80 rounded-2xl rounded-tl-none p-3 text-sm max-w-lg text-slate-200 shadow-md">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function appendBotResponse(data) {
+        const container = document.getElementById('chat-messages');
+
+        // Bot reply text
+        let content = `<p class="mb-2">${escapeHtml(data.reply)}</p>`;
+
+        // Product Cards
+        if (data.products && data.products.length > 0) {
+            content += `<div class="mt-3 space-y-2">`;
+            data.products.forEach(p => {
+                content += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex justify-between items-center">
+                        <div>
+                            <div class="font-semibold text-white text-xs">${escapeHtml(p.name)}</div>
+                            <div class="text-xs text-slate-400">₹${p.price_rupees.toFixed(2)} • Stock: ${p.stock_quantity}</div>
+                        </div>
+                        <button onclick="addToCart(${p.id}, '${escapeHtml(p.name)}', ${p.price_rupees})"
+                                class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded font-medium transition-colors">
+                            + Add to Cart
+                        </button>
+                    </div>
+                `;
+            });
+            content += `</div>`;
+        }
+
+        // Suggestions
+        if (data.suggestions && data.suggestions.length > 0) {
+            content += `<div class="mt-3 bg-amber-950/40 border border-amber-800/60 rounded-lg p-3 text-xs text-amber-200">`;
+            content += `<div class="font-semibold mb-1">💡 Suggested Add-on (Requires Explicit Opt-in):</div>`;
+            data.suggestions.forEach(s => {
+                content += `
+                    <div class="flex justify-between items-center mt-2 bg-slate-900/80 p-2 rounded border border-amber-900/40">
+                        <div>
+                            <span class="font-medium text-white">${escapeHtml(s.name)}</span> (₹${s.price_rupees.toFixed(2)})
+                            <div class="text-[10px] text-amber-300/80">${escapeHtml(s.rationale)}</div>
+                        </div>
+                        <button onclick="addSuggestion(${s.product_id})"
+                                class="bg-amber-600 hover:bg-amber-500 text-white text-[11px] px-2.5 py-1 rounded">
+                            + Add Suggestion
+                        </button>
+                    </div>
+                `;
+            });
+            content += `</div>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'flex items-start space-x-3';
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0">AI</div>
+            <div class="bg-slate-800 border border-slate-700/80 rounded-2xl rounded-tl-none p-3 text-sm max-w-lg text-slate-200 shadow-md">
+                ${content}
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function addToCart(productId, name, priceRupees) {
+        try {
+            const res = await fetch('/chat/add-to-cart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: 1,
+                    session_id: sessionId,
+                    cart_id: activeCartId
+                })
+            });
+            const data = await res.json();
+            activeCartId = data.cart_id;
+            document.getElementById('active-cart-id').value = activeCartId;
+
+            activeCartItems.push({
+                product_id: productId,
+                name: name,
+                price_rupees: priceRupees,
+                is_suggestion: false,
+                explicitly_accepted: true
+            });
+            renderCart();
+            appendBotMessage(`Added "${name}" (₹${priceRupees.toFixed(2)}) to your cart!`);
+        } catch (err) {
+            alert('Error adding to cart: ' + err.message);
+        }
+    }
+
+    async function addSuggestion(productId) {
+        try {
+            const res = await fetch('/chat/add-suggestion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: 1,
+                    session_id: sessionId,
+                    cart_id: activeCartId
+                })
+            });
+            const data = await res.json();
+            renderCart();
+            appendBotMessage(`Added suggested add-on item! ⚠️ Note: It is currently NOT accepted. Click 'Accept' in your cart to enable checkout.`);
+        } catch (err) {
+            alert('Error adding suggestion: ' + err.message);
+        }
+    }
+
+    async function acceptAddon(itemId) {
+        try {
+            const res = await fetch('/chat/accept-addon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cart_id: activeCartId,
+                    item_id: itemId,
+                    session_id: sessionId
+                })
+            });
+            const data = await res.json();
+            appendBotMessage(`✅ Add-on item #${itemId} explicitly accepted! Validator check will now pass.`);
+        } catch (err) {
+            alert('Error accepting add-on: ' + err.message);
+        }
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cart-items-container');
+        const countEl = document.getElementById('cart-item-count');
+        const totalEl = document.getElementById('cart-total-rupees');
+        const checkoutBtn = document.getElementById('checkout-btn');
+
+        if (activeCartItems.length === 0) {
+            container.innerHTML = '<p class="text-xs text-slate-500 italic py-4 text-center">Your cart is currently empty.</p>';
+            countEl.textContent = '0 items';
+            totalEl.textContent = '₹0.00';
+            checkoutBtn.disabled = true;
+            return;
+        }
+
+        let html = '';
+        let total = 0;
+
+        activeCartItems.forEach(item => {
+            total += item.price_rupees;
+            html += `
+                <div class="bg-slate-950 p-2.5 rounded border border-slate-800 flex justify-between items-center text-xs">
+                    <div>
+                        <div class="font-medium text-white">${escapeHtml(item.name)}</div>
+                        <div class="text-slate-400">₹${item.price_rupees.toFixed(2)}</div>
+                    </div>
+                    <span class="text-[10px] text-emerald-400 bg-emerald-950 border border-emerald-800/60 px-2 py-0.5 rounded">OK</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        countEl.textContent = `${activeCartItems.length} items`;
+        totalEl.textContent = `₹${total.toFixed(2)}`;
+        checkoutBtn.disabled = false;
+    }
+
+    async function executeCheckout() {
+        if (!activeCartId) return;
+
+        appendBotMessage("🔒 Initiating Safe Checkout... Submitting cart to Validator Agent Gate...");
+
+        try {
+            const res = await fetch('/chat/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cart_id: activeCartId,
+                    session_id: sessionId
+                })
+            });
+            const data = await res.json();
+            appendBotResponse(data);
+        } catch (err) {
+            appendBotMessage("⚠️ Checkout error: " + err.message);
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+</script>
+{% endblock %}

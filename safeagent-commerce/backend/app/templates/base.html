@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SafeAgent Commerce — Razorpay Buildathon{% endblock %}</title>
+    <!-- HTMX for dynamic interactive UI without heavy JS framework -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <!-- Tailwind CSS CDN for clean styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
+        .pass-badge { background-color: #059669; color: #ecfdf5; }
+        .block-badge { background-color: #dc2626; color: #fef2f2; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800 glass sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+                    🛡️
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-none">SafeAgent Commerce</h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Razorpay Buildathon 2026 — Track 01</p>
+                </div>
+            </div>
+            <nav class="flex items-center space-x-4 text-sm font-medium">
+                <a href="/" class="hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-800">💬 Chat Shop</a>
+                <a href="/admin/audit" class="hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-800">📋 Audit Log</a>
+                <a href="/docs" target="_blank" class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-md hover:bg-slate-700">Swagger API Docs ↗</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+        SafeAgent Commerce • Validator-Gated Agentic Architecture • LLMs propose, Deterministic Validator decides, Payment Agent executes.
+    </footer>
+
+</body>
+</html>
