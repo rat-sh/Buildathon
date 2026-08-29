@@ -10,7 +10,7 @@ Flow (non-negotiable):
 """
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.agents.payment import PaymentAgent
 from app.agents.validator import ValidatorAgent
 from app.core.cart_access import assert_cart_owned_by_session
 from app.core.database import get_db
+from app.core.rate_limit import CHECKOUT_LIMIT, limiter
 from app.core.security import generate_idempotency_key, generate_session_id
 from app.models.cart import Cart
 from app.schemas.chat import ChatMessageResponse, CheckoutRequest
@@ -30,7 +31,8 @@ router = APIRouter(tags=["chat"])
 
 
 @router.post("/checkout", response_model=ChatMessageResponse)
-async def checkout(req: CheckoutRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CHECKOUT_LIMIT)
+async def checkout(request: Request, req: CheckoutRequest, db: AsyncSession = Depends(get_db)):
     """
     Checkout gate for human shopper.
 

@@ -32,6 +32,7 @@ cryptography==42.0.8
 python-dotenv==1.0.1
 structlog==24.2.0          # structured logging
 ulid-py==1.1.0             # for idempotency key generation
+slowapi==0.1.9             # rate limiting for checkout and cart mutations
 
 # ── Testing ────────────────────────────────────────────────────────────────────
 pytest==8.2.2

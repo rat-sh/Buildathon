@@ -11,12 +11,13 @@ Safety contract:
 """
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cart_access import assert_cart_owned_by_session
 from app.core.database import get_db
+from app.core.rate_limit import CART_MUTATION_LIMIT, limiter
 from app.core.security import generate_session_id
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.product import Product
@@ -29,7 +30,8 @@ router = APIRouter(tags=["chat"])
 
 
 @router.post("/add-to-cart")
-async def add_to_cart(req: AddToCartRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CART_MUTATION_LIMIT)
+async def add_to_cart(request: Request, req: AddToCartRequest, db: AsyncSession = Depends(get_db)):
     """Add a regular product (explicitly accepted) to the cart."""
     session_id = req.session_id or generate_session_id()
 
@@ -77,7 +79,8 @@ async def add_to_cart(req: AddToCartRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/add-suggestion")
-async def add_suggestion_to_cart(req: AddToCartRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CART_MUTATION_LIMIT)
+async def add_suggestion_to_cart(request: Request, req: AddToCartRequest, db: AsyncSession = Depends(get_db)):
     """
     Add a suggested item with explicitly_accepted=False.
     SAFETY: Must be accepted via /accept-addon before checkout.
@@ -113,7 +116,8 @@ async def add_suggestion_to_cart(req: AddToCartRequest, db: AsyncSession = Depen
 
 
 @router.post("/accept-addon")
-async def accept_addon(req: AcceptAddonRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CART_MUTATION_LIMIT)
+async def accept_addon(request: Request, req: AcceptAddonRequest, db: AsyncSession = Depends(get_db)):
     """
     Explicit user action to accept a suggested add-on.
     Flips explicitly_accepted = True and creates an audit trail.
@@ -144,7 +148,8 @@ async def accept_addon(req: AcceptAddonRequest, db: AsyncSession = Depends(get_d
 
 
 @router.post("/remove-item")
-async def remove_cart_item(req: RemoveCartItemRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CART_MUTATION_LIMIT)
+async def remove_cart_item(request: Request, req: RemoveCartItemRequest, db: AsyncSession = Depends(get_db)):
     """Remove a cart line item. Only allowed while cart is OPEN (not paid/locked)."""
     cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
     if not cart:

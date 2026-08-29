@@ -4,11 +4,20 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from starlette.requests import Request
 
 from app.core.database import Base
+from app.main import app
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.product import Product
 from app.services.budget_context import parse_budget_from_message, resolve_budget_rupees
+
+
+def _fake_request() -> Request:
+    return Request({
+        "type": "http", "method": "POST", "path": "/chat/remove-item",
+        "headers": [], "client": ("127.0.0.1", 0), "app": app,
+    })
 
 
 def test_parse_budget_from_message():
@@ -56,6 +65,7 @@ async def test_remove_item_from_open_cart(test_db: AsyncSession):
     await test_db.refresh(item)
 
     result = await remove_cart_item(
+        _fake_request(),
         RemoveCartItemRequest(cart_id=cart.id, item_id=item.id, session_id="sess_rm"),
         db=test_db,
     )

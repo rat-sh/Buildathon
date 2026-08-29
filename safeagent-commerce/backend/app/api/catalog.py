@@ -14,7 +14,7 @@ Auth: Uses API key verification (X-AI-Buyer-Key).
 from typing import Any, Dict, List, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,7 @@ from app.agents.validator import ValidatorAgent
 from app.core.cart_access import assert_cart_owned_by_buyer
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.rate_limit import CHECKOUT_LIMIT, limiter
 from app.core.security import verify_ai_buyer_api_key
 from app.models.cart import Cart
 from app.schemas.catalog import AICheckoutRequest, PurchaseIntentRequest, PurchaseIntentResponse
@@ -111,7 +112,9 @@ async def create_purchase_intent(
 
 
 @router.post("/checkout")
+@limiter.limit(CHECKOUT_LIMIT)
 async def ai_buyer_checkout(
+    request: Request,
     req: AICheckoutRequest,
     db: AsyncSession = Depends(get_db),
     auth_key: str = Depends(verify_buyer_auth),

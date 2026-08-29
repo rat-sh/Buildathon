@@ -4,12 +4,21 @@ import pytest
 import pytest_asyncio
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from starlette.requests import Request
 
 from app.core.database import Base
+from app.main import app
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.product import Product
 from app.schemas.chat import RemoveCartItemRequest
 from app.api.chat_mutations import remove_cart_item
+
+
+def _fake_request() -> Request:
+    return Request({
+        "type": "http", "method": "POST", "path": "/chat/remove-item",
+        "headers": [], "client": ("127.0.0.1", 0), "app": app,
+    })
 
 
 @pytest_asyncio.fixture
@@ -46,6 +55,7 @@ async def test_cannot_remove_item_from_another_sessions_cart(test_db: AsyncSessi
 
     with pytest.raises(HTTPException) as exc_info:
         await remove_cart_item(
+            _fake_request(),
             RemoveCartItemRequest(
                 cart_id=cart.id,
                 item_id=item.id,
