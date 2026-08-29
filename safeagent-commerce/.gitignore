@@ -70,3 +70,10 @@ backend/app/static/css/tailwind.min.css
 # Local test artifacts
 test_*.db
 safeagent_test.db
+
+# Design exports — must never be in repository
+Figma/
+figma/
+*.fig
+design-export/
+design_export/
