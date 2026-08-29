@@ -11,16 +11,28 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models.audit import AuditDecision, AuditEvent
+from app.services.audit_analysis import analyze_question
 from app.services.audit_service import AuditService
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["admin"])
+
+
+class AuditAnalyzeRequest(BaseModel):
+    question: str
+
+
+@router.post("/audit/analyze")
+async def analyze_audit_log(req: AuditAnalyzeRequest, db: AsyncSession = Depends(get_db)):
+    """Deterministic log analysis — all counts from real audit_events table."""
+    return await analyze_question(db, req.question)
 
 
 @router.get("/audit/events")

@@ -10,11 +10,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Custom CSS Variables & Animations from Figma -->
     <link rel="stylesheet" href="/static/css/styles.css">
+    {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full flex flex-col antialiased selection:bg-blue-100 selection:text-blue-900" style="background: var(--color-background); color: var(--color-foreground);">
+<body class="h-full flex flex-col antialiased {% block body_class %}{% endblock %}" style="{% block body_style %}background: var(--color-background); color: var(--color-foreground);{% endblock %}">
 
-    <!-- Global Top Nav Header (Figma exact match) -->
-    <header class="shrink-0 border-b z-50 shadow-sm" style="background: var(--color-card); borderColor: var(--color-border);">
+    <!-- Global Top Nav Header -->
+    <header class="shrink-0 border-b z-50 {% if active_page == 'audit' %}ops-nav{% else %}shadow-sm{% endif %}"
+            style="{% if active_page == 'audit' %}background: #1a2332; borderColor: #2d3a4f;{% else %}background: var(--color-card); borderColor: var(--color-border);{% endif %}">
         <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
             
             <!-- Brand Logo & Title -->
@@ -24,31 +26,39 @@
                         <path d="M7 1L12 4v3c0 3-2 5-5 6C4 13 2 11 2 7V4L7 1z" fill="white" fill-opacity="0.95" />
                     </svg>
                 </div>
-                <span class="font-semibold text-sm tracking-tight" style="color: var(--color-foreground);">
+                <span class="font-semibold text-sm tracking-tight" style="color: {% if active_page == 'audit' %}#e2e8f0{% else %}var(--color-foreground){% endif %};">
                     SafeAgent Commerce
                 </span>
             </a>
 
             <!-- Navigation Links -->
             <nav class="flex items-center gap-1.5">
-                <a href="/" 
-                   class="px-4 py-1.5 rounded text-sm font-medium transition-all {% if active_page == 'chat' or active_page == 'shopping' %}bg-slate-100 text-blue-700 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                <a href="/"
+                   class="px-4 py-1.5 rounded text-sm font-medium transition-all
+                   {% if active_page == 'audit' %}text-slate-400 hover:text-white hover:bg-slate-700/50
+                   {% elif active_page == 'chat' or active_page == 'shopping' %}bg-slate-100 text-blue-700 font-semibold
+                   {% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}">
                    Shopping
                 </a>
-                <a href="/admin/audit" 
-                   class="px-4 py-1.5 rounded text-sm font-medium transition-all {% if active_page == 'audit' %}bg-slate-100 text-blue-700 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                <a href="/admin/audit"
+                   class="px-4 py-1.5 rounded text-sm font-medium transition-all
+                   {% if active_page == 'audit' %}
+                     bg-slate-700 text-emerald-400 font-semibold
+                   {% else %}
+                     text-slate-500 hover:text-slate-900 hover:bg-slate-50
+                   {% endif %}">
                    Audit Log
                 </a>
             </nav>
 
             <!-- Status Pill & API Link -->
             <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mono validator-active-pill"
-                     style="color: var(--color-success); border: 1px solid var(--color-success-border);">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse inline-block"></span>
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mono {% if active_page != 'audit' %}validator-active-pill{% endif %}"
+                     style="{% if active_page == 'audit' %}background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);{% else %}color: var(--color-success); border: 1px solid var(--color-success-border);{% endif %}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block"></span>
                     Validator active
                 </div>
-                <a href="/docs" target="_blank" class="hidden sm:inline-flex text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded transition-colors">
+                <a href="/docs" target="_blank" class="hidden sm:inline-flex text-xs font-medium px-2.5 py-1 rounded transition-colors {% if active_page == 'audit' %}text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700{% else %}text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200{% endif %}">
                     API Docs ↗
                 </a>
             </div>

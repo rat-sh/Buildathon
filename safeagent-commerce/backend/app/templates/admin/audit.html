@@ -1,221 +1,146 @@
 {% extends "base.html" %}
 
-{% block title %}Safety Audit Log — SafeAgent Commerce{% endblock %}
+{% block title %}Audit Ops Console — SafeAgent Commerce{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/audit.css">
+{% endblock %}
+
+{% block body_class %}ops-body{% endblock %}
+{% block body_style %}background: #0f1419; color: #e2e8f0;{% endblock %}
 
 {% block content %}
-<div class="h-full scroll-container">
-    <div class="max-w-4xl mx-auto px-8 py-8">
-        
-        <!-- Page Header -->
-        <div class="mb-8">
-            <h1 class="text-2xl font-semibold tracking-tight" style="color: var(--color-foreground);">
-                Safety Audit Log
-            </h1>
-            <p class="text-sm mt-1.5" style="color: var(--color-muted-foreground);">
-                Every payment decision is recorded and explainable — nothing happens without a trace.
-            </p>
+<div class="ops-console flex flex-col h-full min-h-0">
+
+    <!-- Ops header strip -->
+    <div class="ops-header flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <div class="ops-title">SAFEAGENT AUDIT OPS CONSOLE</div>
+            <div class="ops-subtitle">Append-only transaction &amp; security event log · UTC timestamps · Real DB events only</div>
         </div>
-
-        <!-- Stats Row -->
-        {% set total_count = events|length %}
-        {% set pass_count = events|selectattr("decision", "equalto", "PASS")|list|length %}
-        {% set block_count = events|selectattr("decision", "equalto", "BLOCK")|list|length %}
-
-        <div class="grid grid-cols-3 gap-4 mb-7">
-            <!-- Stat 1: Total -->
-            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-card); borderColor: var(--color-border);">
-                <p class="text-xs font-medium" style="color: var(--color-muted-foreground);">Total decisions</p>
-                <p class="text-2xl font-semibold mt-1" style="color: var(--color-foreground);">{{ total_count }}</p>
-            </div>
-            <!-- Stat 2: Approved -->
-            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-success-bg); borderColor: var(--color-success-border);">
-                <p class="text-xs font-medium" style="color: var(--color-success);">Approved (PASS)</p>
-                <p class="text-2xl font-semibold mt-1" style="color: var(--color-success);">{{ pass_count }}</p>
-            </div>
-            <!-- Stat 3: Blocked -->
-            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-danger-bg); borderColor: var(--color-danger-border);">
-                <p class="text-xs font-medium" style="color: var(--color-danger);">Blocked (REJECT)</p>
-                <p class="text-2xl font-semibold mt-1" style="color: var(--color-danger);">{{ block_count }}</p>
+        <div class="ops-stats mono">
+            <span>TOTAL <span class="ops-stat-val total">{{ stats.total }}</span></span>
+            <span>PASS <span class="ops-stat-val pass">{{ stats.pass }}</span></span>
+            <span>BLOCK <span class="ops-stat-val block">{{ stats.block }}</span></span>
+            <span>INFO <span class="ops-stat-val info">{{ stats.info }}</span></span>
         </div>
+    </div>
 
-        <!-- Filter Tabs -->
-        <div class="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit border" style="background: var(--color-secondary); borderColor: var(--color-border);">
-            <button onclick="filterAudit('all')" id="tab-all" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-white text-slate-900 shadow-sm">
-                All decisions
-            </button>
-            <button onclick="filterAudit('PASS')" id="tab-PASS" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
-                Approved
-            </button>
-            <button onclick="filterAudit('BLOCK')" id="tab-BLOCK" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
-                Blocked
-            </button>
-            <button onclick="filterAudit('INFO')" id="tab-INFO" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
-                Info
-            </button>
-        </div>
+    <!-- Threat alerts -->
+    {% for alert in alerts %}
+    <div class="ops-alert {{ alert.level }} mono">{{ alert.message }}</div>
+    {% endfor %}
 
-        <!-- Audit Records List -->
-        <div class="space-y-3" id="audit-list">
-            {% if not events %}
-            <div class="rounded-xl border p-12 text-center" style="background: var(--color-card); borderColor: var(--color-border);">
-                <p class="text-sm" style="color: var(--color-muted-foreground);">
-                    No audit records logged yet. Interact with the Shopping Assistant or run the AI buyer demo to generate events.
-                </p>
+    <div class="ops-layout flex-1 min-h-0">
+
+        <!-- Main log table -->
+        <div class="ops-main">
+            <div class="ops-toolbar">
+                <span class="text-[10px] uppercase tracking-wider" style="color: var(--ops-dim); margin-right: 0.5rem;">Filter</span>
+                <button class="ops-filter-btn active" data-filter="all" onclick="filterAudit('all')">All</button>
+                <button class="ops-filter-btn" data-filter="PASS" onclick="filterAudit('PASS')">PASS</button>
+                <button class="ops-filter-btn" data-filter="BLOCK" onclick="filterAudit('BLOCK')">BLOCK</button>
+                <button class="ops-filter-btn" data-filter="INFO" onclick="filterAudit('INFO')">INFO</button>
+                <span class="ml-auto text-[10px]" style="color: var(--ops-dim);">{{ events|length }} rows · newest first</span>
             </div>
-            {% endif %}
 
-            {% for event in events %}
-            {% set is_pass = event.decision == "PASS" %}
-            {% set is_block = event.decision == "BLOCK" %}
-            <div class="audit-row-item rounded-xl border overflow-hidden transition-all shadow-sm"
-                 data-decision="{{ event.decision }}"
-                 style="background: var(--color-card); borderColor: var(--color-border);"
-                 id="card-{{ event.id }}">
-                
-                <button onclick="toggleExpand({{ event.id }})" 
-                        class="w-full text-left px-5 py-4 flex items-start gap-4 hover:bg-slate-50/80 transition-colors">
-                    
-                    <!-- Status Indicator Badge -->
-                    <div class="shrink-0 mt-0.5">
-                        {% if is_pass %}
-                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
-                             style="background: var(--color-success-bg); borderColor: var(--color-success-border); color: var(--color-success);">
-                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #16a34a;"></span>
-                            <span>Allowed</span>
-                        </div>
-                        {% elif is_block %}
-                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
-                             style="background: var(--color-danger-bg); borderColor: var(--color-danger-border); color: var(--color-danger);">
-                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #dc2626;"></span>
-                            <span>Blocked</span>
-                        </div>
-                        {% else %}
-                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
-                             style="background: var(--color-secondary); borderColor: var(--color-border); color: var(--color-muted-foreground);">
-                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #64748b;"></span>
-                            <span>Info</span>
-                        </div>
-                        {% endif %}
-                    </div>
-iv>
-
-                    <!-- Main Content Header -->
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-4">
-                            <p class="text-sm font-medium leading-snug" style="color: var(--color-foreground);">
-                                {{ event.message }}
-                            </p>
-                            <div class="flex items-center gap-3 shrink-0">
-                                <span class="text-xs font-mono font-semibold" style="color: var(--color-muted-foreground);">
-                                    #{{ event.id }}
-                                </span>
-                                <svg id="chevron-{{ event.id }}" class="transition-transform duration-200" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="2.5" strokeLinecap="round">
-                                    <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- Code & Timestamp details -->
-                        <div class="flex items-center gap-3 mt-1.5">
-                            <span class="mono text-xs px-2 py-0.5 rounded font-medium"
-                                  style="background: var(--color-secondary); color: var(--color-muted-foreground);">
-                                {{ event.reason_code }}
-                            </span>
-                            <span class="text-xs" style="color: var(--color-muted-foreground);">
-                                {{ event.created_at }}
-                            </span>
-                            <span class="text-xs font-medium text-slate-400">
-                                Actor: <strong class="text-slate-600 font-sans">{{ event.actor }}</strong>
-                            </span>
-                        </div>
-                    </div>
-                </button>
-
-                <!-- Expanded Detail Accordion -->
-                <div id="detail-{{ event.id }}" class="hidden px-5 pb-5 pt-2 border-t text-xs" style="borderColor: var(--color-border);">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-                        <div class="space-y-3">
-                            <div>
-                                <p class="font-medium text-slate-500 mb-0.5">Session / Buyer Token</p>
-                                <p class="mono text-slate-800">{{ event.buyer_id if event.buyer_id != "-" else event.session_id }}</p>
-                            </div>
-                            <div>
-                                <p class="font-medium text-slate-500 mb-0.5">Action Executed</p>
-                                <p class="mono font-semibold text-slate-800">{{ event.action }}</p>
-                            </div>
-                            <div>
-                                <p class="font-medium text-slate-500 mb-0.5">Target Entity</p>
-                                <p class="text-slate-800">{{ event.target_type }} (ID: {{ event.target_id }})</p>
-                            </div>
-                        </div>
-
-                        <div>
-                            <p class="font-medium text-slate-500 mb-1.5">Raw Evidence JSON Snapshot</p>
-                            <div class="mono bg-slate-900 text-slate-200 rounded-lg p-3 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-44 border border-slate-800">
-                                {{ event.evidence_json if event.evidence_json else "{}" }}
-                            </div>
-                        </div>
-                    </div>
+            <div class="ops-table-wrap">
+                {% if not events %}
+                <div class="ops-empty">
+                    No audit events yet. Use Shopping or AI buyer demo to generate real log entries.
                 </div>
+                {% else %}
+                <table class="ops-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Time (UTC)</th>
+                            <th>ID</th>
+                            <th>Actor</th>
+                            <th>Action / Message</th>
+                            <th>Decision</th>
+                            <th>Reason code</th>
+                            <th>Target</th>
+                            <th>Session / Buyer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr class="ops-row" data-decision="{{ event.decision }}" onclick="toggleEvidence({{ event.id }})">
+                            <td class="mono" style="color: var(--ops-dim); width: 1rem;" id="chev-{{ event.id }}">▸</td>
+                            <td class="mono" style="white-space: nowrap; color: var(--ops-muted);">{{ event.created_at }}</td>
+                            <td class="mono">{{ event.id }}</td>
+                            <td class="mono">{{ event.actor }}</td>
+                            <td>
+                                <span class="mono" style="color: var(--ops-dim);">{{ event.action }}</span>
+                                <span style="color: var(--ops-muted);"> — </span>
+                                <span class="truncate" style="max-width: 280px; display: inline-block; vertical-align: bottom;">{{ event.message }}</span>
+                            </td>
+                            <td>
+                                {% if event.decision == "PASS" %}
+                                <span class="badge pass">PASS</span>
+                                {% elif event.decision == "BLOCK" %}
+                                <span class="badge block">BLOCK</span>
+                                {% elif event.decision == "ERROR" %}
+                                <span class="badge error">ERROR</span>
+                                {% else %}
+                                <span class="badge info">INFO</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="reason-code">{{ event.reason_code }}</span></td>
+                            <td class="mono truncate" title="{{ event.target }}">{{ event.target }}</td>
+                            <td class="mono truncate" title="{{ event.session_buyer }}">{{ event.session_buyer }}</td>
+                        </tr>
+                        <tr class="ops-detail-row hidden" id="detail-{{ event.id }}">
+                            <td colspan="9">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Evidence JSON</div>
+                                        <pre class="evidence-json">{{ event.evidence_json if event.evidence_json else "{}" }}</pre>
+                                    </div>
+                                    <div class="space-y-2 text-[11px]">
+                                        <div><span style="color: var(--ops-dim);">Action:</span> <span class="mono">{{ event.action }}</span></div>
+                                        <div><span style="color: var(--ops-dim);">Session:</span> <span class="mono">{{ event.session_id }}</span></div>
+                                        <div><span style="color: var(--ops-dim);">Buyer:</span> <span class="mono">{{ event.buyer_id }}</span></div>
+                                        <div><span style="color: var(--ops-dim);">Target:</span> <span class="mono">{{ event.target_type }} / {{ event.target_id }}</span></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
             </div>
-            {% endfor %}
         </div>
 
-        <!-- Tamper-Evident Footer Note (Figma exact match) -->
-        <div class="mt-8 rounded-xl px-5 py-4 flex items-start gap-3 border shadow-sm"
-             style="background: var(--color-secondary); borderColor: var(--color-border);">
-            <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            <div>
-                <p class="text-xs font-medium" style="color: var(--color-foreground);">
-                    Tamper-evident log
-                </p>
-                <p class="text-xs mt-0.5 leading-relaxed" style="color: var(--color-muted-foreground);">
-                    These records are written by the Validator, not the AI. The AI cannot modify or delete entries. Each record is immutable and stored securely in the database.
-                </p>
+        <!-- Log analysis sidebar -->
+        <aside class="ops-sidebar analysis-panel">
+            <h3>Log Analysis</h3>
+            <p style="font-size: 10px; color: var(--ops-dim); line-height: 1.4; margin-bottom: 0.5rem;">
+                Operator queries → real SQL counts from audit_events. No invented numbers.
+            </p>
+            <form id="analysis-form">
+                <textarea id="analysis-input" class="analysis-input" rows="2"
+                          placeholder="e.g. How many blocked today?"></textarea>
+                <button type="submit" class="analysis-btn">RUN QUERY</button>
+            </form>
+            <div id="analysis-result" class="analysis-result mono">Ready.</div>
+            <div style="margin-top: 0.75rem; border-top: 1px solid var(--ops-border); padding-top: 0.5rem;">
+                <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Quick queries</div>
+                <button type="button" class="quick-q" onclick="setQuickQuery('How many purchases today?')">How many purchases today?</button>
+                <button type="button" class="quick-q" onclick="setQuickQuery('How many blocked?')">How many blocked?</button>
+                <button type="button" class="quick-q" onclick="setQuickQuery('How many TX_LIMIT_EXCEEDED?')">How many TX_LIMIT_EXCEEDED?</button>
+                <button type="button" class="quick-q" onclick="setQuickQuery('Any INVALID_HMAC_SIGNATURE in last hour?')">INVALID_HMAC in last hour?</button>
+                <button type="button" class="quick-q" onclick="setQuickQuery('Show threat summary')">Show threat summary</button>
+                <button type="button" class="quick-q" onclick="setQuickQuery('How many events by actor validator_agent?')">Events by validator_agent</button>
             </div>
-        </div>
-
+            <div style="margin-top: auto; padding-top: 1rem; font-size: 10px; color: var(--ops-dim); line-height: 1.5;">
+                Tamper-evident · Append-only · Validator &amp; webhook decisions immutable
+            </div>
+        </aside>
     </div>
 </div>
 
-<script>
-    function toggleExpand(id) {
-        const detail = document.getElementById("detail-" + id);
-        const chevron = document.getElementById("chevron-" + id);
-
-        if (detail.classList.contains("hidden")) {
-            detail.classList.remove("hidden");
-            if (chevron) chevron.style.transform = "rotate(180deg)";
-        } else {
-            detail.classList.add("hidden");
-            if (chevron) chevron.style.transform = "rotate(0deg)";
-        }
-    }
-
-    function filterAudit(type) {
-        const rows = document.querySelectorAll(".audit-row-item");
-        rows.forEach(row => {
-            const dec = row.getAttribute("data-decision");
-            if (type === "all" || dec === type) {
-                row.style.display = "block";
-            } else {
-                row.style.display = "none";
-            }
-        });
-
-        // Toggle Tab button styles
-        ["all", "PASS", "BLOCK", "INFO"].forEach(t => {
-            const btn = document.getElementById("tab-" + t);
-            if (btn) {
-                if (t === type) {
-                    btn.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-white text-slate-900 shadow-sm";
-                } else {
-                    btn.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900";
-                }
-            }
-        });
-    }
-</script>
+<script src="/static/js/audit.js"></script>
 {% endblock %}
