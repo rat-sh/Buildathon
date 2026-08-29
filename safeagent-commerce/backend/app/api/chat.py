@@ -180,6 +180,45 @@ async def add_to_cart(
     }
 
 
+@router.get("/cart/{cart_id}")
+async def get_cart(cart_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Return full cart state from the database.
+    Frontend calls this after every mutation to stay in sync with DB.
+    Never returns mock data — always reflects real database state.
+    """
+    stmt = (
+        select(Cart)
+        .options(selectinload(Cart.items).selectinload(CartItem.product))
+        .where(Cart.id == cart_id)
+    )
+    cart = (await db.execute(stmt)).scalar_one_or_none()
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found.")
+
+    items = [
+        {
+            "item_id": item.id,
+            "product_id": item.product_id,
+            "name": item.product.name if item.product else "Product",
+            "quantity": item.quantity,
+            "price_rupees": item.charged_price_paisa / 100,
+            "is_suggestion": item.is_suggestion,
+            "explicitly_accepted": item.explicitly_accepted,
+        }
+        for item in cart.items
+    ]
+    total_rupees = sum(i["price_rupees"] * i["quantity"] for i in items)
+
+    return {
+        "cart_id": cart.id,
+        "status": cart.status.value,
+        "total_rupees": total_rupees,
+        "items_count": len(items),
+        "items": items,
+    }
+
+
 @router.post("/add-suggestion")
 async def add_suggestion_to_cart(
     req: AddToCartRequest,

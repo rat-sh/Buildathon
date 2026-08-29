@@ -26,9 +26,9 @@ async def chat_view(request: Request):
     """Render customer AI Shopping Assistant chat interface."""
     session_id = generate_session_id()
     return templates.TemplateResponse(
-        "chat.html",
-        {
-            "request": request,
+        request=request,
+        name="chat.html",
+        context={
             "session_id": session_id,
             "active_page": "shopping",
         },
@@ -68,9 +68,9 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
         })
 
     return templates.TemplateResponse(
-        "admin/audit.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/audit.html",
+        context={
             "events": processed_events,
             "active_page": "audit",
         },
