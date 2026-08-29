@@ -98,8 +98,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(chat_router, prefix="/chat", tags=["chat"])
 
     # Catalog (AI buyer path) — Phase 5
-    # from app.api.catalog import router as catalog_router
-    # app.include_router(catalog_router, prefix="/catalog", tags=["catalog"])
+    from app.api.catalog import router as catalog_router
+    app.include_router(catalog_router, prefix="/catalog", tags=["catalog"])
 
     # Webhooks (Razorpay) — Phase 3
     from app.api.webhooks import router as webhooks_router
