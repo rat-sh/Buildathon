@@ -15,6 +15,7 @@ Startup sequence:
 """
 
 from contextlib import asynccontextmanager
+import os
 
 import structlog
 from fastapi import FastAPI
@@ -71,9 +72,11 @@ def create_app() -> FastAPI:
     )
 
     # ── Static files ──────────────────────────────────────────────────────────
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    os.makedirs(static_dir, exist_ok=True)
     app.mount(
         "/static",
-        StaticFiles(directory="app/static"),
+        StaticFiles(directory=static_dir),
         name="static",
     )
 

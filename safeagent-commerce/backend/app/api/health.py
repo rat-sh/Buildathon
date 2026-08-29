@@ -14,13 +14,5 @@ async def health_check():
     return {"status": "ok", "service": "safeagent-commerce"}
 
 
-@router.get("/")
-async def root():
-    """Root redirect — points to chat UI or docs."""
-    return {
-        "service": "SafeAgent Commerce",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "chat": "/chat",
-        "audit": "/admin/audit",
-    }
+# NOTE: GET / is handled by views.py (serves the chat HTML UI)
+# This JSON response has been removed to allow the HTML page to load.
