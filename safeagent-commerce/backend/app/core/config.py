@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # ── AI Buyer Auth ─────────────────────────────────────────────────────────
     AI_BUYER_API_KEY: str = Field(default="test-ai-buyer-key")
 
+    # ── Admin / Merchant Auth ─────────────────────────────────────────────────
+    ADMIN_API_KEY: str = Field(default="test-admin-key")
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     CORS_ORIGINS: List[str] = Field(
         default=["http://localhost:8000", "http://localhost:3000"]

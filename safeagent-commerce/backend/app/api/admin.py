@@ -10,19 +10,33 @@ SAFETY CONTRACT:
 from typing import Any, Dict, List, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import verify_ai_buyer_api_key
 from app.models.audit import AuditDecision, AuditEvent
 from app.services.audit_analysis import analyze_question
 from app.services.audit_service import AuditService
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(tags=["admin"])
+
+def verify_admin_auth(x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key")) -> str:
+    """Dependency: only authenticated admin/merchant keys may read audit logs."""
+    expected = settings.ADMIN_API_KEY
+    if not x_admin_key or not verify_ai_buyer_api_key(x_admin_key, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Admin-Key header.",
+        )
+    return x_admin_key
+
+
+router = APIRouter(tags=["admin"], dependencies=[Depends(verify_admin_auth)])
 
 
 class AuditAnalyzeRequest(BaseModel):
