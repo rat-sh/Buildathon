@@ -17,11 +17,12 @@ import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_razorpay_webhook_signature
-from app.models.cart import Cart, CartStatus
+from app.models.cart import Cart, CartItem, CartStatus
 from app.models.order import Order, OrderStatus
 from app.services.audit_service import AuditService
 
@@ -127,11 +128,23 @@ async def razorpay_webhook(
             order.razorpay_payment_id = rzp_payment_id
             order.captured_at = datetime.now(timezone.utc)
 
-            # Update associated cart to PAID
+            # Update associated cart to PAID and decrement stock
             stmt_cart = select(Cart).where(Cart.id == order.cart_id)
             cart = (await db.execute(stmt_cart)).scalar_one_or_none()
             if cart:
                 cart.status = CartStatus.PAID
+
+            stmt_items = (
+                select(CartItem)
+                .where(CartItem.cart_id == order.cart_id)
+                .options(selectinload(CartItem.product))
+            )
+            cart_items = (await db.execute(stmt_items)).scalars().all()
+            for cart_item in cart_items:
+                if cart_item.product:
+                    cart_item.product.stock_quantity = max(
+                        0, cart_item.product.stock_quantity - cart_item.quantity
+                    )
 
             await db.commit()
 
