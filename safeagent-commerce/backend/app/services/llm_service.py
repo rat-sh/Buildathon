@@ -41,19 +41,22 @@ class LLMService:
         self,
         user_message: str,
         products: List[Dict[str, Any]],
+        budget_rupees: Optional[float] = None,
+        is_greeting: bool = False,
     ) -> str:
         """
         Generate a warm, natural ChatGPT-style reply combining conversational guidance
         with real product catalog context.
         """
-        msg_lower = user_message.lower().strip()
-
-        # Handle simple greetings without calling LLM (fast & clean)
-        if msg_lower in ["hi", "hello", "hey", "hi there", "greetings", "good morning", "good evening"]:
-            return "Hello! How can I help you today? Let me know if you're looking for running shoes, fitness gear, or anything else from our catalog."
+        if is_greeting:
+            return (
+                "Hello! I'm here to help you find products from our catalog. "
+                "What's your rough budget for this shop? That way I can suggest items that fit — "
+                "for example, \"running shoes under ₹4000\" or \"my budget is ₹3000\"."
+            )
 
         if not self.client:
-            return self._fallback_reply(user_message, products)
+            return self._fallback_reply(user_message, products, budget_rupees)
 
         prod_summaries = []
         for p in products[:5]:
@@ -63,6 +66,7 @@ class LLMService:
             prod_summaries.append(f"- {name} (₹{price:,.0f}): {desc}")
 
         catalog_ctx = "\n".join(prod_summaries) if prod_summaries else "No matching products in catalog."
+        budget_ctx = f"\nUser budget: ₹{budget_rupees:,.0f}" if budget_rupees else ""
 
         system_prompt = (
             "You are a warm, calm, helpful AI Shopping Assistant for SafeAgent Commerce. "
@@ -71,9 +75,9 @@ class LLMService:
             "Guidelines:\n"
             "1. Reply warmly and naturally to the user's prompt.\n"
             "2. If products are found, introduce them naturally and explain briefly why they fit the user's request.\n"
-            "3. If no products are found or the user asks a general question, answer helpfully and suggest items to search for.\n"
+            "3. Respect the user's stated budget when discussing options — never assume they only have ₹5,000.\n"
             "4. Keep responses concise (2 to 4 sentences), polite, and natural. Never invent prices or fake items.\n\n"
-            f"Matching Catalog Products:\n{catalog_ctx}"
+            f"Matching Catalog Products:\n{catalog_ctx}{budget_ctx}"
         )
 
         try:
@@ -92,15 +96,21 @@ class LLMService:
         except Exception as e:
             logger.warning("LLM reply generation failed, using fallback", error=str(e))
 
-        return self._fallback_reply(user_message, products)
+        return self._fallback_reply(user_message, products, budget_rupees)
 
-    def _fallback_reply(self, user_message: str, products: List[Dict[str, Any]]) -> str:
+    def _fallback_reply(
+        self,
+        user_message: str,
+        products: List[Dict[str, Any]],
+        budget_rupees: Optional[float] = None,
+    ) -> str:
         """Clean fallback reply when OpenAI key is absent."""
+        budget_note = f" (within your ₹{budget_rupees:,.0f} budget)" if budget_rupees else ""
         if not products:
             return "I couldn't find exact matches in our catalog for that request. Feel free to search for running shoes, socks, protein, or insoles!"
         if len(products) == 1:
-            return f"I found a great option in our catalog for you: {products[0].get('name', 'Product')}."
-        return f"Here are {len(products)} relevant items from our catalog that match your search:"
+            return f"I found a great option{budget_note}: {products[0].get('name', 'Product')}."
+        return f"Here are {len(products)} relevant items{budget_note} that match your search:"
 
     async def parse_shopping_intent(self, user_prompt: str) -> Dict[str, Any]:
         """Parse natural language user prompt into search parameters."""

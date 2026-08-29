@@ -171,7 +171,8 @@ def check_tx_limit(request: ValidationRequest, cart_total_paisa: int, limits: di
             request, "TX_LIMIT_EXCEEDED", cart_total_paisa,
             {"check": "per_tx_limit", "cart_total_paisa": cart_total_paisa,
              "per_tx_limit_paisa": per_tx_limit, "buyer_type": limits["buyer_type"]},
-            f"Cart total ₹{cart_total_paisa/100:.2f} exceeds per-tx limit ₹{per_tx_limit/100:.2f} for {limits['buyer_type']} buyer.",
+            f"This order total (₹{cart_total_paisa / 100:.2f}) is above the ₹{per_tx_limit / 100:.0f} safety limit per transaction. "
+            "Please remove some items or split into separate orders — this is a platform safety cap, not your wallet balance.",
         )
     return None
 

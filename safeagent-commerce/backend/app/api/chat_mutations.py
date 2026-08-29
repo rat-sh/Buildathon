@@ -12,14 +12,14 @@ Safety contract:
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import generate_session_id
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.product import Product
-from app.schemas.chat import AcceptAddonRequest, AddToCartRequest
+from app.schemas.chat import AcceptAddonRequest, AddToCartRequest, RemoveCartItemRequest
 from app.services.audit_service import AuditService
 
 logger = structlog.get_logger(__name__)
@@ -130,3 +130,42 @@ async def accept_addon(req: AcceptAddonRequest, db: AsyncSession = Depends(get_d
     )
 
     return {"status": "success", "item_id": item.id, "explicitly_accepted": True}
+
+
+@router.post("/remove-item")
+async def remove_cart_item(req: RemoveCartItemRequest, db: AsyncSession = Depends(get_db)):
+    """Remove a cart line item. Only allowed while cart is OPEN (not paid/locked)."""
+    cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found.")
+    if cart.status != CartStatus.OPEN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove items — cart is no longer open for edits.",
+        )
+
+    item = (await db.execute(
+        select(CartItem).where(CartItem.id == req.item_id, CartItem.cart_id == req.cart_id)
+    )).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cart item not found.")
+
+    product_name = "item"
+    if item.product_id:
+        product = (await db.execute(select(Product).where(Product.id == item.product_id))).scalar_one_or_none()
+        if product:
+            product_name = product.name
+
+    await db.execute(
+        delete(CartItem).where(CartItem.id == req.item_id, CartItem.cart_id == req.cart_id)
+    )
+    await db.commit()
+
+    await AuditService.log_event(
+        db=db, actor="human", action="remove_from_cart", decision="INFO",
+        session_id=req.session_id, target_type="cart_item", target_id=str(req.item_id),
+        evidence={"cart_id": req.cart_id, "product_id": item.product_id},
+        message=f"Removed '{product_name}' from cart #{req.cart_id}.",
+    )
+
+    return {"status": "success", "cart_id": req.cart_id, "removed_item_id": req.item_id}

@@ -18,11 +18,14 @@ from app.core.security import generate_session_id
 from app.models.cart import Cart, CartItem
 from app.schemas.chat import ChatMessageRequest, ChatMessageResponse
 from app.services.audit_service import AuditService
+from app.services.budget_context import resolve_budget_rupees
 from app.services.llm_service import LLMService
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["chat"])
+
+_GREETINGS = {"hi", "hello", "hey", "hi there", "greetings", "good morning", "good evening"}
 
 
 @router.post("/message", response_model=ChatMessageResponse)
@@ -30,21 +33,20 @@ async def chat_message(
     req: ChatMessageRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Process a human customer chat message.
-    Searches real catalog, generates natural ChatGPT-style reply, returns product matches.
-    No cart mutation happens here.
-    """
+    """Process a human customer chat message. No cart mutation happens here."""
     session_id = req.session_id or generate_session_id()
     shopping_agent = ShoppingAgent()
     suggestion_agent = SuggestionAgent()
     llm_service = LLMService()
 
     msg_lower = req.message.strip().lower()
-    is_greeting = msg_lower in ["hi", "hello", "hey", "hi there", "greetings", "good morning", "good evening"]
+    is_greeting = msg_lower in _GREETINGS
 
-    # Search real catalog
-    products = await shopping_agent.search_catalog(db, prompt=req.message)
+    budget_rupees = resolve_budget_rupees(req.budget_rupees, req.message)
+
+    products = await shopping_agent.search_catalog(
+        db, prompt=req.message, max_price_rupees=budget_rupees,
+    )
 
     cart_id = req.cart_id
     cart_summary = None
@@ -76,9 +78,11 @@ async def chat_message(
                     for item in cart.items
                 ],
             }
-            suggestions = await suggestion_agent.get_suggestions_for_cart(db, cart_id)
+            user_budget_paisa = int(budget_rupees * 100) if budget_rupees else None
+            suggestions = await suggestion_agent.get_suggestions_for_cart(
+                db, cart_id, user_budget_paisa=user_budget_paisa,
+            )
 
-    # Log audit event for user message
     await AuditService.log_event(
         db=db,
         actor="human",
@@ -87,20 +91,28 @@ async def chat_message(
         session_id=session_id,
         target_type="cart",
         target_id=str(cart_id) if cart_id else None,
-        evidence={"message": req.message, "products_found": len(products)},
+        evidence={
+            "message": req.message,
+            "products_found": len(products),
+            "budget_rupees": budget_rupees,
+        },
         message=f"Customer chat: '{req.message}'",
     )
 
-    # Generate natural conversational reply
-    reply = await llm_service.generate_conversational_reply(req.message, products)
+    reply = await llm_service.generate_conversational_reply(
+        req.message, products, budget_rupees=budget_rupees, is_greeting=is_greeting,
+    )
 
-    # For simple greetings, suppress card dumping unless user specifically asked for products
+    if not budget_rupees and not is_greeting and not products:
+        reply += " If you share a rough budget, I can narrow results to what fits."
+
     displayed_products = [] if is_greeting else products
 
     return ChatMessageResponse(
         reply=reply,
         session_id=session_id,
         cart_id=cart_id,
+        budget_rupees=budget_rupees,
         products=displayed_products,
         suggestions=suggestions if not is_greeting else [],
         cart_summary=cart_summary,

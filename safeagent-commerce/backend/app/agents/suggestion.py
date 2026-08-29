@@ -33,6 +33,7 @@ class SuggestionAgent:
         db: AsyncSession,
         cart_id: int,
         is_ai_buyer: bool = False,
+        user_budget_paisa: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generate up to 2 relevant upsell suggestions for a cart.
@@ -57,7 +58,13 @@ class SuggestionAgent:
 
         cart_total_paisa = cart.total_paisa
         limits = get_limits_for_buyer(is_ai_buyer)
-        remaining_budget_paisa = limits["per_tx_limit_paisa"] - cart_total_paisa
+        safety_headroom = limits["per_tx_limit_paisa"] - cart_total_paisa
+
+        if user_budget_paisa is not None:
+            user_headroom = user_budget_paisa - cart_total_paisa
+            remaining_budget_paisa = min(safety_headroom, user_headroom)
+        else:
+            remaining_budget_paisa = safety_headroom
 
         if remaining_budget_paisa <= 0:
             logger.info("No remaining budget for suggestions", remaining_budget=remaining_budget_paisa)

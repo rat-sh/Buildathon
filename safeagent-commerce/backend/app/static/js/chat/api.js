@@ -8,11 +8,13 @@
  * Callers must call fetchCart() after mutations to keep UI in sync with DB.
  */
 
-async function apiSendMessage(message, sessionId, cartId) {
+async function apiSendMessage(message, sessionId, cartId, budgetRupees) {
+    const body = { message, session_id: sessionId, cart_id: cartId };
+    if (budgetRupees != null) body.budget_rupees = budgetRupees;
     const res = await fetch("/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, session_id: sessionId, cart_id: cartId })
+        body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -31,6 +33,19 @@ async function apiAddToCart(productId, sessionId, cartId) {
         body: JSON.stringify({ product_id: productId, quantity: 1, session_id: sessionId, cart_id: cartId })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function apiRemoveCartItem(itemId, cartId, sessionId) {
+    const res = await fetch("/chat/remove-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart_id: cartId, item_id: itemId, session_id: sessionId })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Remove failed" }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+    }
     return res.json();
 }
 

@@ -12,6 +12,14 @@ class ChatMessageRequest(BaseModel):
     message: str = Field(description="User natural language text")
     session_id: Optional[str] = Field(default=None, description="Human session ID")
     cart_id: Optional[int] = Field(default=None, description="Active cart ID if exists")
+    budget_rupees: Optional[float] = Field(default=None, description="User-stated shopping budget in INR")
+
+
+class RemoveCartItemRequest(BaseModel):
+    """Remove a line item from an open cart."""
+    cart_id: int
+    item_id: int
+    session_id: Optional[str] = None
 
 
 class AddToCartRequest(BaseModel):
@@ -41,6 +49,7 @@ class ChatMessageResponse(BaseModel):
     reply: str
     session_id: str
     cart_id: Optional[int] = None
+    budget_rupees: Optional[float] = None
     products: List[Dict[str, Any]] = Field(default_factory=list)
     suggestions: List[Dict[str, Any]] = Field(default_factory=list)
     cart_summary: Optional[Dict[str, Any]] = None

@@ -78,6 +78,9 @@ function renderCart() {
                 ? `<span class="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">✓ Accepted</span>`
                 : `<button onclick="acceptAddonItem(${item.item_id})" class="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-semibold hover:bg-amber-100 transition-colors">Accept add-on</button>`)
             : "";
+        const removeBtn = cartStatus === "open" && checkoutState !== "paid"
+            ? `<button onclick="removeCartItem(${item.item_id})" class="text-[10px] text-red-600 hover:text-red-800 font-medium px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors" title="Remove from cart">Remove</button>`
+            : "";
         return `
             <li class="cart-item-card">
                 <div class="cart-item-icon">🛍️</div>
@@ -86,6 +89,7 @@ function renderCart() {
                     <div class="flex items-center gap-2 mt-1 flex-wrap">
                         <span class="text-sm font-bold" style="color: var(--color-primary);">${formatINR(item.price_rupees)}</span>
                         ${badge}
+                        ${removeBtn}
                     </div>
                 </div>
             </li>`;

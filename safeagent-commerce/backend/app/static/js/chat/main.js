@@ -11,8 +11,12 @@
 // ── Shared state (read by all modules) ───────────────────────────────────────
 const sessionId   = document.getElementById("chat-root").dataset.sessionId;
 let activeCartId  = null;
-let cartItems     = [];   // READ-ONLY cache — always set via fetchCartFromBackend()
-let checkoutState = "idle"; // "idle" | "validating" | "approved" | "blocked" | "paid"
+let cartItems     = [];
+let checkoutState = "idle";
+let userBudgetRupees = (() => {
+    const stored = sessionStorage.getItem("budget_" + sessionId);
+    return stored ? parseFloat(stored) : null;
+})();
 
 // ── Input wiring ──────────────────────────────────────────────────────────────
 const chatInput = document.getElementById("chat-input");
@@ -36,8 +40,13 @@ async function sendUserMessage(text) {
     scrollToBottom();
 
     try {
-        const data = await apiSendMessage(text, sessionId, activeCartId);
+        const data = await apiSendMessage(text, sessionId, activeCartId, userBudgetRupees);
         removeMessageElement(typingId);
+
+        if (data.budget_rupees != null) {
+            userBudgetRupees = data.budget_rupees;
+            sessionStorage.setItem("budget_" + sessionId, String(userBudgetRupees));
+        }
 
         if (data.cart_id) {
             activeCartId = data.cart_id;
@@ -102,5 +111,23 @@ async function acceptAddonItem(itemId) {
         await fetchCartFromBackend();
     } catch (err) {
         alert("Error accepting add-on: " + err.message);
+    }
+}
+
+async function removeCartItem(itemId) {
+    if (!activeCartId || cartStatus !== "open") return;
+    try {
+        await apiRemoveCartItem(itemId, activeCartId, sessionId);
+        checkoutState = "idle";
+        await fetchCartFromBackend();
+        // Re-enable add buttons for removed products
+        document.querySelectorAll("[id^='add-btn-']").forEach(btn => {
+            btn.disabled = false;
+            btn.innerText = "+ Add to cart";
+            btn.style.background = "";
+            btn.style.color = "white";
+        });
+    } catch (err) {
+        alert("Could not remove item: " + err.message);
     }
 }
