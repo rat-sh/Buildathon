@@ -94,20 +94,20 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(health_router)
 
     # Chat (human HTMX path) — Phase 5
-    # from app.api.chat import router as chat_router
-    # app.include_router(chat_router, prefix="/chat", tags=["chat"])
+    from app.api.chat import router as chat_router
+    app.include_router(chat_router, prefix="/chat", tags=["chat"])
 
     # Catalog (AI buyer path) — Phase 5
-    # from app.api.catalog import router as catalog_router
-    # app.include_router(catalog_router, prefix="/catalog", tags=["catalog"])
+    from app.api.catalog import router as catalog_router
+    app.include_router(catalog_router, prefix="/catalog", tags=["catalog"])
 
     # Webhooks (Razorpay) — Phase 3
     from app.api.webhooks import router as webhooks_router
     app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 
     # Admin audit log — Phase 5
-    # from app.api.admin import router as admin_router
-    # app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    from app.api.admin import router as admin_router
+    app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
 
 # ── Application instance ──────────────────────────────────────────────────────
