@@ -97,7 +97,12 @@ class RazorpayService:
             response = self.client.order.create(data=payload)
             logger.info("Razorpay Order created successfully", razorpay_order_id=response.get("id"))
             return response
-        except razorpay.errors.RazorpayError as e:
+        except (
+            razorpay.errors.BadRequestError,
+            razorpay.errors.GatewayError,
+            razorpay.errors.ServerError,
+            razorpay.errors.SignatureVerificationError,
+        ) as e:
             logger.error("Razorpay SDK Error during order creation", error=str(e))
             raise RuntimeError(f"Razorpay Order creation failed: {str(e)}") from e
         except Exception as e:
