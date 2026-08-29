@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Audit Log — SafeAgent Commerce{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                📋 Immutable Audit Trail
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">
+                Structured decision records logged for every money-touching action and Validator check.
+            </p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3.5 py-2 rounded-lg font-medium transition-colors border border-slate-700">
+                🔄 Refresh Logs
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="flex items-center space-x-2 text-xs font-medium">
+        <button onclick="filterLogs('ALL')" class="filter-btn bg-indigo-600 text-white px-3 py-1.5 rounded-md">All Events</button>
+        <button onclick="filterLogs('PASS')" class="filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-md">PASS Only</button>
+        <button onclick="filterLogs('BLOCK')" class="filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-md">BLOCK Only</button>
+    </div>
+
+    <!-- Audit Events Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-800/90 uppercase text-[11px] text-slate-400 font-semibold border-b border-slate-700">
+                    <tr>
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">Timestamp</th>
+                        <th class="py-3 px-4">Actor</th>
+                        <th class="py-3 px-4">Action</th>
+                        <th class="py-3 px-4">Decision</th>
+                        <th class="py-3 px-4">Reason Code</th>
+                        <th class="py-3 px-4">Message</th>
+                        <th class="py-3 px-4 text-right">Evidence</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-[11px]">
+                    {% if not events %}
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-500 italic">No audit events recorded yet. Perform a checkout or run the AI buyer demo script to generate logs.</td>
+                    </tr>
+                    {% endif %}
+
+                    {% for event in events %}
+                    <tr class="event-row hover:bg-slate-800/40 transition-colors" data-decision="{{ event.decision }}">
+                        <td class="py-3 px-4 text-slate-500">#{{ event.id }}</td>
+                        <td class="py-3 px-4 text-slate-400 whitespace-nowrap">{{ event.created_at }}</td>
+                        <td class="py-3 px-4">
+                            <span class="bg-slate-800 text-slate-200 px-2 py-0.5 rounded font-medium">{{ event.actor }}</span>
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-200">{{ event.action }}</td>
+                        <td class="py-3 px-4">
+                            {% if event.decision == "PASS" %}
+                            <span class="bg-emerald-950 text-emerald-300 border border-emerald-800 px-2.5 py-0.5 rounded-full font-bold">PASS</span>
+                            {% elif event.decision == "BLOCK" %}
+                            <span class="bg-rose-950 text-rose-300 border border-rose-800 px-2.5 py-0.5 rounded-full font-bold">BLOCK</span>
+                            {% else %}
+                            <span class="bg-sky-950 text-sky-300 border border-sky-800 px-2.5 py-0.5 rounded-full font-bold">{{ event.decision }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if event.reason_code == "PASS" %}
+                            <span class="text-emerald-400 font-semibold">PASS</span>
+                            {% else %}
+                            <span class="text-amber-400 font-semibold">{{ event.reason_code }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 max-w-xs truncate font-sans text-slate-300" title="{{ event.message }}">{{ event.message }}</td>
+                        <td class="py-3 px-4 text-right">
+                            {% if event.evidence_json %}
+                            <button onclick="toggleEvidence({{ event.id }})" class="text-indigo-400 hover:underline text-[11px] font-sans">View Raw JSON 🔍</button>
+                            {% else %}
+                            <span class="text-slate-600">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if event.evidence_json %}
+                    <tr id="evidence-{{ event.id }}" class="hidden bg-slate-950/80">
+                        <td colspan="8" class="p-4">
+                            <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-slate-300 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap max-h-48">
+                                {{ event.evidence_json }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function toggleEvidence(id) {
+        const el = document.getElementById('evidence-' + id);
+        if (el) el.classList.toggle('hidden');
+    }
+
+    function filterLogs(decision) {
+        const rows = document.querySelectorAll('.event-row');
+        rows.forEach(row => {
+            if (decision === 'ALL' || row.getAttribute('data-decision') === decision) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const btns = document.querySelectorAll('.filter-btn');
+        btns.forEach(btn => {
+            btn.classList.remove('bg-indigo-600', 'text-white');
+            btn.classList.add('bg-slate-800', 'text-slate-300');
+        });
+        event.target.classList.remove('bg-slate-800', 'text-slate-300');
+        event.target.classList.add('bg-indigo-600', 'text-white');
+    }
+</script>
+{% endblock %}

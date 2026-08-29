@@ -109,6 +109,10 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.admin import router as admin_router
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
+    # HTML Views — Phase 7
+    from app.api.views import router as views_router
+    app.include_router(views_router)
+
 
 # ── Application instance ──────────────────────────────────────────────────────
 app = create_app()
