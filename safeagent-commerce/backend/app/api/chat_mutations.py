@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cart_access import assert_cart_owned_by_session
 from app.core.database import get_db
 from app.core.security import generate_session_id
 from app.models.cart import Cart, CartItem, CartStatus
@@ -39,8 +40,12 @@ async def add_to_cart(req: AddToCartRequest, db: AsyncSession = Depends(get_db))
     cart = None
     if req.cart_id:
         cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
+        if cart:
+            assert_cart_owned_by_session(cart, session_id)
+            if cart.status != CartStatus.OPEN:
+                cart = None
 
-    if not cart or cart.status != CartStatus.OPEN:
+    if not cart:
         cart = Cart(session_id=session_id, status=CartStatus.OPEN)
         db.add(cart)
         await db.commit()
@@ -86,6 +91,7 @@ async def add_suggestion_to_cart(req: AddToCartRequest, db: AsyncSession = Depen
     cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
     if not cart or cart.status != CartStatus.OPEN:
         raise HTTPException(status_code=400, detail="Invalid active cart.")
+    assert_cart_owned_by_session(cart, session_id)
 
     item = CartItem(
         cart_id=cart.id, product_id=product.id, quantity=1,
@@ -119,6 +125,11 @@ async def accept_addon(req: AcceptAddonRequest, db: AsyncSession = Depends(get_d
     if not item:
         raise HTTPException(status_code=404, detail="Cart item not found.")
 
+    cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found.")
+    assert_cart_owned_by_session(cart, req.session_id)
+
     item.explicitly_accepted = True
     await db.commit()
 
@@ -138,6 +149,7 @@ async def remove_cart_item(req: RemoveCartItemRequest, db: AsyncSession = Depend
     cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found.")
+    assert_cart_owned_by_session(cart, req.session_id)
     if cart.status != CartStatus.OPEN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -10,13 +10,16 @@ Flow (non-negotiable):
 """
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.payment import PaymentAgent
 from app.agents.validator import ValidatorAgent
+from app.core.cart_access import assert_cart_owned_by_session
 from app.core.database import get_db
 from app.core.security import generate_idempotency_key, generate_session_id
+from app.models.cart import Cart
 from app.schemas.chat import ChatMessageResponse, CheckoutRequest
 from app.schemas.validator import ValidationRequest
 from app.services.audit_service import AuditService
@@ -38,6 +41,11 @@ async def checkout(req: CheckoutRequest, db: AsyncSession = Depends(get_db)):
     """
     session_id = req.session_id or generate_session_id()
     idempotency_key = req.idempotency_key or generate_idempotency_key("pay_human")
+
+    cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
+    if not cart:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found.")
+    assert_cart_owned_by_session(cart, session_id)
 
     val_result = await ValidatorAgent.validate_cart(
         db,

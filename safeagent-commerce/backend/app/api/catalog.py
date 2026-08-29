@@ -15,14 +15,17 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.catalog import CatalogAgent
 from app.agents.payment import PaymentAgent
 from app.agents.validator import ValidatorAgent
+from app.core.cart_access import assert_cart_owned_by_buyer
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_ai_buyer_api_key
+from app.models.cart import Cart
 from app.schemas.catalog import AICheckoutRequest, PurchaseIntentRequest, PurchaseIntentResponse
 from app.schemas.validator import ValidationRequest
 from app.services.audit_service import AuditService
@@ -127,6 +130,11 @@ async def ai_buyer_checkout(
         buyer_id=req.buyer_id,
         is_ai_buyer=True,
     )
+
+    cart = (await db.execute(select(Cart).where(Cart.id == req.cart_id))).scalar_one_or_none()
+    if not cart:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found.")
+    assert_cart_owned_by_buyer(cart, req.buyer_id)
 
     # ── VALIDATOR GATE ────────────────────────────────────────────────────────
     val_result = await ValidatorAgent.validate_cart(db, val_req)
