@@ -158,7 +158,7 @@ The demo buyer script:
 - ❌ No payment without Validator PASS token
 - ❌ No auto-added upsell items
 - ❌ No audit log modification (append-only)
-- ✅ HMAC verified before any webhook state change
+- ✅ HMAC verified before any webhook state change (no debug bypass)
 - ✅ Max 2 payment retries — then stops
 - ✅ Hard spending limits defined in code constants (not DB)
 
@@ -189,12 +189,12 @@ safeagent-commerce/
 ## Build Progress
 
 - [x] Phase 1 — Foundation (project setup, DB models, config)
-- [ ] Phase 2 — Validator Core (safety gate + audit service + tests)
-- [ ] Phase 3 — Payment + Razorpay (orders, webhook, state machine)
-- [ ] Phase 4 — Remaining Agents (shopping, suggestion, catalog)
-- [ ] Phase 5 — API Routes (chat, catalog tools, admin)
-- [ ] Phase 6 — AI Buyer (demo script)
-- [ ] Phase 7 — Minimal UI (HTMX chat + audit page)
+- [x] Phase 2 — Validator Core (safety gate + audit service + tests)
+- [x] Phase 3 — Payment + Razorpay (orders, webhook, state machine)
+- [x] Phase 4 — Remaining Agents (shopping, suggestion, catalog)
+- [x] Phase 5 — API Routes (chat, catalog tools, admin)
+- [x] Phase 6 — AI Buyer (demo script)
+- [x] Phase 7 — Minimal UI (HTMX chat + audit page)
 
 ---
 

@@ -24,7 +24,10 @@ async function handleSend(e) {
     e.preventDefault();
     const text = chatInput.value.trim();
     if (!text) return;
+    await sendUserMessage(text);
+}
 
+async function sendUserMessage(text) {
     appendUserMessage(text);
     chatInput.value = "";
     sendBtn.disabled = true;
@@ -40,7 +43,10 @@ async function handleSend(e) {
             activeCartId = data.cart_id;
             if (data.cart_summary?.items) {
                 cartItems = data.cart_summary.items;
+                if (data.cart_summary.status === "paid") checkoutState = "paid";
+                updateCartStatusBadge(data.cart_summary.status);
                 renderCart();
+                updateValidatorBox();
             } else {
                 await fetchCartFromBackend();
             }
@@ -48,8 +54,14 @@ async function handleSend(e) {
         appendAIMessage(data);
     } catch (err) {
         removeMessageElement(typingId);
-        appendSystemError("Failed to connect to AI Assistant service.");
+        appendSystemError("Couldn't reach the assistant. Please try again.");
     }
+}
+
+function sendQuickPrompt(text) {
+    chatInput.value = text;
+    sendBtn.disabled = false;
+    sendUserMessage(text);
 }
 
 // ── Cart mutation handlers ────────────────────────────────────────────────────

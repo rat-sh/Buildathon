@@ -1,12 +1,31 @@
 /**
  * chat/cart.js — Cart Sidebar + Validator Box Rendering
- * ======================================================
- * Renders the cart sidebar from the shared `cartItems` state.
- * fetchCartFromBackend() is the ONLY way cartItems gets populated —
- * it calls GET /chat/cart/{id} after every mutation.
- *
- * updateValidatorBox() renders the checkout status UI.
  */
+
+let cartStatus = "open";
+
+function updateCartStatusBadge(status) {
+    cartStatus = status || "open";
+    const badge = document.getElementById("cart-status-badge");
+    if (!badge) return;
+
+    if (!activeCartId || cartItems.length === 0) {
+        badge.classList.add("hidden");
+        return;
+    }
+
+    badge.classList.remove("hidden", "open", "locked", "paid", "failed");
+    badge.classList.add(cartStatus);
+
+    const labels = {
+        open: "● Open",
+        locked: "● Awaiting payment",
+        paid: "✓ Paid",
+        failed: "✗ Failed",
+        abandoned: "○ Abandoned",
+    };
+    badge.textContent = labels[cartStatus] || status;
+}
 
 async function fetchCartFromBackend() {
     if (!activeCartId) return;
@@ -16,7 +35,10 @@ async function fetchCartFromBackend() {
         cartItems = data.items || [];
         if (data.status === "paid") {
             checkoutState = "paid";
+        } else if (data.status === "locked" && checkoutState === "idle") {
+            checkoutState = "idle";
         }
+        updateCartStatusBadge(data.status);
         renderCart();
         updateValidatorBox();
     } catch (_) {
@@ -39,6 +61,7 @@ function renderCart() {
         countEl.textContent = "No items yet";
         btn.disabled = true;
         checkoutState = "idle";
+        updateCartStatusBadge(null);
         updateValidatorBox();
         return;
     }
@@ -52,24 +75,26 @@ function renderCart() {
         total += item.price_rupees * (item.quantity || 1);
         const badge = item.is_suggestion
             ? (item.explicitly_accepted
-                ? `<span class="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded font-medium">Opt-in Accepted</span>`
-                : `<button onclick="acceptAddonItem(${item.item_id})" class="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded font-semibold hover:bg-amber-100 transition-colors">Accept Addon</button>`)
+                ? `<span class="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-medium">✓ Accepted</span>`
+                : `<button onclick="acceptAddonItem(${item.item_id})" class="text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-semibold hover:bg-amber-100 transition-colors">Accept add-on</button>`)
             : "";
         return `
-            <li class="flex items-start gap-3 py-3 border-b last:border-0" style="borderColor: var(--color-border);">
+            <li class="cart-item-card">
+                <div class="cart-item-icon">🛍️</div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium truncate" style="color: var(--color-foreground);">${escapeHtml(item.name)}</p>
-                    <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-sm font-semibold" style="color: var(--color-primary);">${formatINR(item.price_rupees)}</span>
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <span class="text-sm font-bold" style="color: var(--color-primary);">${formatINR(item.price_rupees)}</span>
                         ${badge}
                     </div>
                 </div>
             </li>`;
     }).join("");
 
-    countEl.textContent = `${cartItems.length} item${cartItems.length > 1 ? "s" : ""}`;
+    countEl.textContent = `${cartItems.length} item${cartItems.length > 1 ? "s" : ""} · ${formatINR(total)}`;
     totalEl.textContent = formatINR(total);
     btn.disabled = checkoutState === "validating" || checkoutState === "paid";
+    btn.classList.toggle("pay-now", checkoutState === "approved");
 }
 
 function updateValidatorBox(customMessage, reasonCode, checkoutData) {
@@ -78,8 +103,8 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
 
     if (checkoutState === "idle") {
         box.classList.add("hidden");
-        btn.textContent = "Checkout";
-        btn.style.background = "var(--color-primary)";
+        btn.textContent = "Proceed to Checkout";
+        btn.classList.remove("pay-now");
         btn.onclick = handleCheckout;
         return;
     }
@@ -89,22 +114,22 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
     const configs = {
         validating: {
             bg: "var(--color-secondary)", border: "var(--color-border)",
-            html: `<div class="flex items-center gap-2 text-slate-600 font-medium">
-                <svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            html: `<div class="flex items-center gap-2 text-slate-600 font-semibold">
+                <svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.2"/>
                     <path d="M21 12a9 9 0 00-9-9"/>
-                </svg><span>Validator checking...</span></div>
-                <p class="text-slate-500">Verifying price, stock, and spending limit</p>`,
-            btnText: "Validating...", btnDisabled: true
+                </svg><span>Safety Validator checking…</span></div>
+                <p class="text-slate-500 mt-1">Verifying price · stock · spending limits · add-on consent</p>`,
+            btnText: "Validating…", btnDisabled: true
         },
         approved: {
             bg: "var(--color-success-bg)", border: "var(--color-success-border)",
             html: `<div class="flex items-center gap-2 text-emerald-800 font-semibold">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <polyline points="20 6 9 17 4 12"/>
-                </svg><span>Validator Approved (PASS)</span></div>
-                <p class="text-emerald-700">${escapeHtml(customMessage || "Price confirmed · Stock available · Within limit")}</p>`,
-            btnText: "Pay Now (Razorpay Test Mode)", btnDisabled: false
+                </svg><span>Approved — safe to pay</span></div>
+                <p class="text-emerald-700 mt-1">${escapeHtml(customMessage || "All safety checks passed. Ready for Razorpay checkout.")}</p>`,
+            btnText: "Pay with Razorpay", btnDisabled: false
         },
         blocked: {
             bg: "var(--color-danger-bg)", border: "var(--color-danger-border)",
@@ -112,18 +137,18 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
                     <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg><span>Payment Blocked (${reasonCode || "REJECTED"})</span></div>
-                <p class="text-red-700">${escapeHtml(customMessage)}</p>`,
-            btnText: "Retry Checkout", btnDisabled: false
+                </svg><span>Blocked — ${reasonCode || "REJECTED"}</span></div>
+                <p class="text-red-700 mt-1">${escapeHtml(customMessage || "Payment cannot proceed.")}</p>`,
+            btnText: "Try Again", btnDisabled: false
         },
         paid: {
             bg: "var(--color-success-bg)", border: "var(--color-success-border)",
             html: `<div class="flex items-center gap-2 text-emerald-800 font-semibold">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <polyline points="20 6 9 17 4 12"/>
-                </svg><span>Order Complete</span></div>
-                <p class="text-emerald-700">Payment captured. Add new items to start another order.</p>`,
-            btnText: "Paid", btnDisabled: true
+                </svg><span>Order complete!</span></div>
+                <p class="text-emerald-700 mt-1">Payment captured successfully. Search for more items to start a new order.</p>`,
+            btnText: "✓ Paid", btnDisabled: true
         }
     };
 
@@ -134,12 +159,11 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
     box.innerHTML = cfg.html;
     btn.disabled = cfg.btnDisabled;
     btn.textContent = cfg.btnText;
+    btn.classList.toggle("pay-now", checkoutState === "approved");
 
     if (checkoutState === "approved") {
-        btn.style.background = "var(--color-accent)";
         btn.onclick = () => openRazorpayModal(checkoutData);
     } else if (checkoutState === "blocked") {
-        btn.style.background = "var(--color-primary)";
         btn.onclick = handleCheckout;
     }
 }

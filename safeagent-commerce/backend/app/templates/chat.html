@@ -3,127 +3,135 @@
 {% block title %}Shopping — SafeAgent Commerce{% endblock %}
 
 {% block content %}
-<div id="chat-root" class="h-full flex overflow-hidden"
+<div id="chat-root" class="h-full flex overflow-hidden max-w-7xl mx-auto w-full"
      data-session-id="{{ session_id }}"
      data-razorpay-key="{{ razorpay_key_id }}">
+
     <!-- Chat area -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 flex flex-col min-w-0 chat-panel rounded-l-2xl overflow-hidden m-2 mr-0 ml-3 my-3 border" style="borderColor: var(--color-border);">
         <!-- Page header -->
-        <div class="shrink-0 px-8 pt-7 pb-5 border-b" style="borderColor: var(--color-border); background: var(--color-card);">
-            <h1 class="text-xl font-semibold tracking-tight" style="color: var(--color-foreground);">
-                AI Shopping Assistant
-            </h1>
-            <p class="text-sm mt-0.5" style="color: var(--color-muted-foreground);">
-                AI can suggest — but cannot spend freely. Every payment requires validator approval.
-            </p>
+        <div class="shrink-0 px-6 sm:px-8 pt-6 pb-4 border-b chat-header-gradient" style="borderColor: var(--color-border);">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-semibold tracking-tight" style="color: var(--color-foreground);">
+                        AI Shopping Assistant
+                    </h1>
+                    <p class="text-sm mt-1 leading-relaxed" style="color: var(--color-muted-foreground);">
+                        Tell me what you need — I'll find products and suggest add-ons. You stay in control of every payment.
+                    </p>
+                </div>
+            </div>
+            <!-- Trust strip — Track 01 bar: explainable, bounded, gated -->
+            <div class="trust-strip mt-4">
+                <span class="trust-pill">🛡️ Validator-gated checkout</span>
+                <span class="trust-pill">✋ Opt-in upsells only</span>
+                <span class="trust-pill">📋 Full audit trail</span>
+            </div>
+            <!-- Quick prompts for normal users -->
+            <div class="flex flex-wrap gap-2 mt-4" id="quick-prompts">
+                <button type="button" class="quick-prompt" onclick="sendQuickPrompt('running shoes under ₹4000')">👟 Running shoes</button>
+                <button type="button" class="quick-prompt" onclick="sendQuickPrompt('protein bars')">🥤 Protein bars</button>
+                <button type="button" class="quick-prompt" onclick="sendQuickPrompt('running socks')">🧦 Socks</button>
+                <button type="button" class="quick-prompt" onclick="sendQuickPrompt('water bottle')">💧 Water bottle</button>
+            </div>
         </div>
 
         <!-- Messages stream -->
-        <div id="messages-container" class="flex-1 scroll-container px-8 py-6 space-y-6">
-            <!-- Initial AI Welcome message -->
+        <div id="messages-container" class="flex-1 scroll-container px-6 sm:px-8 py-6 space-y-5">
             <div class="message-enter flex gap-3 max-w-2xl">
-                <div class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
-                     style="background: var(--color-secondary); border: 1px solid var(--color-border);">
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                        <path d="M7 1L12 4v3c0 3-2 5-5 6C4 13 2 11 2 7V4L7 1z" fill="var(--color-primary)" fill-opacity="0.85" />
+                <div class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 nav-brand-icon">
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                        <path d="M7 1L12 4v3c0 3-2 5-5 6C4 13 2 11 2 7V4L7 1z" fill="white" fill-opacity="0.95" />
                     </svg>
                 </div>
-                <div class="flex-1 space-y-4">
-                    <div class="text-sm leading-relaxed" style="color: var(--color-foreground);">
-                        Hi! I can help you find products and build your order. Tell me what you're looking for — I'll suggest options, but every payment goes through our safety validator before anything is charged.
-                    </div>
+                <div class="flex-1 ai-bubble rounded-2xl rounded-tl-md px-4 py-3.5">
+                    <p class="text-sm leading-relaxed" style="color: var(--color-foreground);">
+                        Hi there! 👋 I'm your shopping assistant. Ask me for products — like <em>"running shoes under ₹4000"</em> — and I'll show real items from our catalog.
+                    </p>
+                    <p class="text-xs mt-2 leading-relaxed" style="color: var(--color-muted-foreground);">
+                        Suggested add-ons need your explicit approval before checkout. Every payment is verified by our safety validator.
+                    </p>
                 </div>
             </div>
         </div>
 
         <!-- Input bar -->
-        <div class="shrink-0 px-8 py-4 border-t" style="background: var(--color-card); borderColor: var(--color-border);">
+        <div class="shrink-0 px-6 sm:px-8 py-4 border-t" style="background: var(--color-card); borderColor: var(--color-border);">
             <form id="chat-form" onsubmit="handleSend(event)" class="relative">
-                <div class="flex items-center gap-3 rounded-xl border px-4 py-3 transition-all focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500"
+                <div class="flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100"
                      style="background: var(--color-muted); borderColor: var(--color-border);">
-                    <input type="text" 
-                           id="chat-input" 
-                           name="message" 
+                    <input type="text"
+                           id="chat-input"
+                           name="message"
                            autocomplete="off"
-                           placeholder="Tell me what you need (e.g., 'running shoes under ₹4000')..."
+                           placeholder="What are you looking for today?"
                            class="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400 text-slate-900 font-normal">
-                    <button type="submit" 
+                    <button type="submit"
                             id="send-btn"
                             disabled
-                            class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
-                            style="background: var(--color-primary); color: white;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-30 checkout-btn"
+                            style="color: white;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 2L11 13" />
                             <path d="M22 2L15 22l-4-9-9-4 20-7z" />
                         </svg>
                     </button>
                 </div>
             </form>
-            <p class="text-center text-xs mt-2.5" style="color: var(--color-muted-foreground);">
-                AI suggestions only — payment requires Validator approval
+            <p class="text-center text-[11px] mt-2.5" style="color: var(--color-muted-foreground);">
+                Powered by SafeAgent · Razorpay test mode · AI cannot charge without your approval
             </p>
         </div>
     </div>
 
-    <!-- Cart sidebar (Figma exact match) -->
-    <aside class="shrink-0 w-80 border-l flex flex-col" style="background: var(--color-card); borderColor: var(--color-border);">
-        <div class="px-6 pt-7 pb-4 border-b" style="borderColor: var(--color-border);">
-            <h2 class="text-sm font-semibold" style="color: var(--color-foreground);">
-                Your Cart
-            </h2>
-            <p id="cart-item-count" class="text-xs mt-0.5" style="color: var(--color-muted-foreground);">
-                No items yet
-            </p>
+    <!-- Cart sidebar -->
+    <aside class="shrink-0 w-80 lg:w-88 cart-sidebar flex flex-col rounded-r-2xl overflow-hidden m-2 ml-0 mr-3 my-3 border" style="borderColor: var(--color-border);">
+        <div class="px-5 pt-6 pb-4 border-b" style="borderColor: var(--color-border);">
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold" style="color: var(--color-foreground);">Your Cart</h2>
+                <span id="cart-status-badge" class="status-badge open hidden">Open</span>
+            </div>
+            <p id="cart-item-count" class="text-xs mt-1" style="color: var(--color-muted-foreground);">No items yet</p>
         </div>
 
-        <!-- Cart items list -->
         <div class="flex-1 scroll-container" id="cart-scroll-area">
             <div id="cart-empty-state" class="flex flex-col items-center justify-center h-full gap-3 px-6 py-12">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: var(--color-secondary);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="1.5" strokeLinecap="round">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center" style="background: linear-gradient(135deg, #eff6ff, #e0e7ff);">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round">
                         <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <path d="M16 10a4 4 0 01-8 0" />
                     </svg>
                 </div>
-                <p class="text-xs text-center" style="color: var(--color-muted-foreground);">
-                    Add products from the chat to see them here
+                <p class="text-xs text-center leading-relaxed" style="color: var(--color-muted-foreground);">
+                    Your cart is empty.<br>Add products from the chat to get started.
                 </p>
             </div>
-            <ul id="cart-items-list" class="px-6 py-4 space-y-3 hidden">
-                <!-- Cart items dynamically rendered here -->
-            </ul>
+            <ul id="cart-items-list" class="px-4 py-3 space-y-2 hidden"></ul>
         </div>
 
-        <!-- Cart footer -->
-        <div class="shrink-0 px-6 py-5 border-t space-y-4" style="borderColor: var(--color-border);">
-            <div id="cart-total-row" class="flex items-center justify-between hidden">
-                <span class="text-sm" style="color: var(--color-muted-foreground);">Total</span>
-                <span id="cart-total-amount" class="text-base font-semibold" style="color: var(--color-foreground);">
-                    ₹0
-                </span>
+        <div class="shrink-0 px-5 py-5 border-t space-y-3" style="borderColor: var(--color-border);">
+            <div id="cart-total-row" class="flex items-center justify-between hidden px-1">
+                <span class="text-sm font-medium" style="color: var(--color-muted-foreground);">Total</span>
+                <span id="cart-total-amount" class="text-lg font-bold" style="color: var(--color-foreground);">₹0</span>
             </div>
 
-            <!-- Validator status box (Figma design) -->
-            <div id="validator-status-box" class="hidden rounded-lg px-4 py-3 text-xs space-y-1 transition-all">
-                <!-- Dynamically updated status -->
-            </div>
+            <div id="validator-status-box" class="hidden validator-box px-4 py-3 text-xs space-y-1 transition-all"></div>
 
             <button id="checkout-btn"
                     disabled
                     onclick="handleCheckout()"
-                    class="w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 shadow-sm"
-                    style="background: var(--color-primary); color: white;">
+                    class="checkout-btn w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+                    style="color: white;">
                 Checkout
             </button>
 
-            <!-- Safety note -->
-            <div class="flex items-start gap-2 pt-1">
-                <svg class="shrink-0 mt-0.5" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="2" strokeLinecap="round">
+            <div class="safety-note flex items-start gap-2">
+                <svg class="shrink-0 mt-0.5" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinecap="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
-                <p class="text-xs leading-relaxed" style="color: var(--color-muted-foreground);">
-                    AI cannot complete payment independently. The Validator must approve every order.
+                <p class="text-[11px] leading-relaxed" style="color: var(--color-muted-foreground);">
+                    Every payment is checked for price, stock, and limits before Razorpay opens. View the full trail in <a href="/admin/audit" class="underline font-medium" style="color: var(--color-primary);">Audit Log</a>.
                 </p>
             </div>
         </div>
@@ -138,4 +146,3 @@
 <script src="/static/js/chat/checkout.js" defer></script>
 <script src="/static/js/chat/main.js" defer></script>
 {% endblock %}
-

@@ -20,8 +20,13 @@ async function handleCheckout() {
     try {
         const data = await apiCheckout(activeCartId, sessionId);
         if (data.is_blocked) {
-            checkoutState = "blocked";
-            updateValidatorBox(data.reply, data.block_reason_code, null);
+            if (data.block_reason_code === "CART_ALREADY_PAID") {
+                checkoutState = "paid";
+                updateValidatorBox(data.reply, data.block_reason_code, null);
+            } else {
+                checkoutState = "blocked";
+                updateValidatorBox(data.reply, data.block_reason_code, null);
+            }
         } else {
             checkoutState = "approved";
             updateValidatorBox(data.reply, "PASS", data.checkout_data);
@@ -110,6 +115,7 @@ function showPaymentSuccess(result) {
      */
     checkoutState = "paid";
     updateValidatorBox();
+    updateCartStatusBadge("paid");
 
     const c = document.getElementById("messages-container");
     const div = document.createElement("div");
