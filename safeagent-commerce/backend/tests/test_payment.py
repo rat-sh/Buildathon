@@ -9,9 +9,12 @@ Tests:
   5. Webhook handler processes valid payment.captured event and updates order status
 """
 
+import asyncio
+
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.core.database import Base, get_db
@@ -20,6 +23,7 @@ from app.models.order import Order, OrderStatus
 from app.models.product import Product
 from app.agents.payment import PaymentAgent
 from app.schemas.validator import ValidatorPassToken
+from app.services.razorpay_service import RazorpayService
 from app.main import app
 
 
@@ -150,3 +154,62 @@ async def test_webhook_simulated_sig_rejected(webhook_client: TestClient):
 
     assert response.status_code == 400
     assert "Invalid Razorpay webhook signature" in response.json()["detail"]
+
+
+# ── TEST 6: Concurrent checkout — only one order per cart ────────────────────
+@pytest.mark.asyncio
+async def test_concurrent_checkout_only_one_order():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with factory() as setup_db:
+        cart = Cart(session_id="sess_concurrent", status=CartStatus.OPEN)
+        setup_db.add(cart)
+        await setup_db.commit()
+
+        product = Product(
+            name="Race Shoe", sku="RACE-1", category="running_shoes",
+            price_paisa=100000, stock_quantity=5, is_active=True,
+        )
+        setup_db.add(product)
+        await setup_db.commit()
+
+        setup_db.add(CartItem(
+            cart_id=cart.id, product_id=product.id, quantity=1,
+            charged_price_paisa=100000, explicitly_accepted=True,
+        ))
+        await setup_db.commit()
+        cart_id = cart.id
+
+    async def attempt(idempotency_key: str):
+        async with factory() as db:
+            token = ValidatorPassToken(
+                cart_id=cart_id,
+                idempotency_key=idempotency_key,
+                total_paisa=100000,
+                session_id="sess_concurrent",
+                is_ai_buyer=False,
+                issued_at_timestamp=1722345678.0,
+            )
+            agent = PaymentAgent(razorpay_service=RazorpayService())
+            try:
+                await agent.execute_payment(db, token)
+                return "ok"
+            except Exception:
+                return "err"
+
+    results = await asyncio.gather(
+        attempt("idemp_concurrent_1"),
+        attempt("idemp_concurrent_2"),
+    )
+
+    async with factory() as db:
+        orders = (await db.execute(select(Order).where(Order.cart_id == cart_id))).scalars().all()
+
+    await engine.dispose()
+
+    assert len(orders) == 1
+    assert results.count("ok") == 1
+    assert results.count("err") == 1

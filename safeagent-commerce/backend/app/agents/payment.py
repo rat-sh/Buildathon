@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -72,16 +72,20 @@ class PaymentAgent:
             total_paisa=pass_token.total_paisa,
         )
 
-        # ── Fetch Cart ────────────────────────────────────────────────────────
-        stmt_cart = select(Cart).where(Cart.id == pass_token.cart_id)
-        cart = (await db.execute(stmt_cart)).scalar_one_or_none()
+        # ── Atomic cart lock (OPEN → LOCKED); second concurrent caller gets rowcount 0 ─
+        lock_result = await db.execute(
+            update(Cart)
+            .where(Cart.id == pass_token.cart_id, Cart.status == CartStatus.OPEN)
+            .values(status=CartStatus.LOCKED)
+        )
+        if lock_result.rowcount != 1:
+            cart = (await db.execute(select(Cart).where(Cart.id == pass_token.cart_id))).scalar_one_or_none()
+            status_val = cart.status.value if cart else "missing"
+            raise RuntimeError(
+                f"Cart {pass_token.cart_id} is not open for payment (status={status_val})."
+            )
 
-        if not cart:
-            raise ValueError(f"Cart ID {pass_token.cart_id} not found.")
-
-        # ── Lock Cart ─────────────────────────────────────────────────────────
-        cart.status = CartStatus.LOCKED
-        await db.commit()
+        cart = (await db.execute(select(Cart).where(Cart.id == pass_token.cart_id))).scalar_one()
 
         # ── Check Existing Attempt Count for this Cart ────────────────────────
         stmt_orders = select(Order).where(Order.cart_id == pass_token.cart_id)
