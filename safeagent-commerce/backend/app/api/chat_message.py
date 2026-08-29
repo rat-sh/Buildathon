@@ -18,6 +18,7 @@ from app.core.security import generate_session_id
 from app.models.cart import Cart, CartItem
 from app.schemas.chat import ChatMessageRequest, ChatMessageResponse
 from app.services.audit_service import AuditService
+from app.services.llm_service import LLMService
 
 logger = structlog.get_logger(__name__)
 
@@ -31,13 +32,18 @@ async def chat_message(
 ):
     """
     Process a human customer chat message.
-    Searches real catalog, returns product matches and AI suggestions.
+    Searches real catalog, generates natural ChatGPT-style reply, returns product matches.
     No cart mutation happens here.
     """
     session_id = req.session_id or generate_session_id()
     shopping_agent = ShoppingAgent()
     suggestion_agent = SuggestionAgent()
+    llm_service = LLMService()
 
+    msg_lower = req.message.strip().lower()
+    is_greeting = msg_lower in ["hi", "hello", "hey", "hi there", "greetings", "good morning", "good evening"]
+
+    # Search real catalog
     products = await shopping_agent.search_catalog(db, prompt=req.message)
 
     cart_id = req.cart_id
@@ -72,6 +78,7 @@ async def chat_message(
             }
             suggestions = await suggestion_agent.get_suggestions_for_cart(db, cart_id)
 
+    # Log audit event for user message
     await AuditService.log_event(
         db=db,
         actor="human",
@@ -84,17 +91,17 @@ async def chat_message(
         message=f"Customer chat: '{req.message}'",
     )
 
-    reply = (
-        f"I found {len(products)} matching items in our catalog for you!"
-        if products
-        else "I couldn't find exact matches. Try: running shoes, socks, protein, or insoles."
-    )
+    # Generate natural conversational reply
+    reply = await llm_service.generate_conversational_reply(req.message, products)
+
+    # For simple greetings, suppress card dumping unless user specifically asked for products
+    displayed_products = [] if is_greeting else products
 
     return ChatMessageResponse(
         reply=reply,
         session_id=session_id,
         cart_id=cart_id,
-        products=products,
-        suggestions=suggestions,
+        products=displayed_products,
+        suggestions=suggestions if not is_greeting else [],
         cart_summary=cart_summary,
     )

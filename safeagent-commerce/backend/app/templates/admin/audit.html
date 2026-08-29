@@ -36,10 +36,9 @@
             <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-danger-bg); borderColor: var(--color-danger-border);">
                 <p class="text-xs font-medium" style="color: var(--color-danger);">Blocked (REJECT)</p>
                 <p class="text-2xl font-semibold mt-1" style="color: var(--color-danger);">{{ block_count }}</p>
-            </div>
         </div>
 
-        <!-- Filter Tabs (Figma exact match) -->
+        <!-- Filter Tabs -->
         <div class="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit border" style="background: var(--color-secondary); borderColor: var(--color-border);">
             <button onclick="filterAudit('all')" id="tab-all" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-white text-slate-900 shadow-sm">
                 All decisions
@@ -49,6 +48,9 @@
             </button>
             <button onclick="filterAudit('BLOCK')" id="tab-BLOCK" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
                 Blocked
+            </button>
+            <button onclick="filterAudit('INFO')" id="tab-INFO" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
+                Info
             </button>
         </div>
 
@@ -64,6 +66,7 @@
 
             {% for event in events %}
             {% set is_pass = event.decision == "PASS" %}
+            {% set is_block = event.decision == "BLOCK" %}
             <div class="audit-row-item rounded-xl border overflow-hidden transition-all shadow-sm"
                  data-decision="{{ event.decision }}"
                  style="background: var(--color-card); borderColor: var(--color-border);"
@@ -74,14 +77,27 @@
                     
                     <!-- Status Indicator Badge -->
                     <div class="shrink-0 mt-0.5">
+                        {% if is_pass %}
                         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
-                             style="background: {{ 'var(--color-success-bg)' if is_pass else 'var(--color-danger-bg)' }};
-                                    borderColor: {{ 'var(--color-success-border)' if is_pass else 'var(--color-danger-border)' }};
-                                    color: {{ 'var(--color-success)' if is_pass else 'var(--color-danger)' }};">
-                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: {{ '#16a34a' if is_pass else '#dc2626' }};"></span>
-                            <span>{{ 'Allowed' if is_pass else 'Blocked' }}</span>
+                             style="background: var(--color-success-bg); borderColor: var(--color-success-border); color: var(--color-success);">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #16a34a;"></span>
+                            <span>Allowed</span>
                         </div>
+                        {% elif is_block %}
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
+                             style="background: var(--color-danger-bg); borderColor: var(--color-danger-border); color: var(--color-danger);">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #dc2626;"></span>
+                            <span>Blocked</span>
+                        </div>
+                        {% else %}
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
+                             style="background: var(--color-secondary); borderColor: var(--color-border); color: var(--color-muted-foreground);">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: #64748b;"></span>
+                            <span>Info</span>
+                        </div>
+                        {% endif %}
                     </div>
+iv>
 
                     <!-- Main Content Header -->
                     <div class="flex-1 min-w-0">
@@ -190,7 +206,7 @@
         });
 
         // Toggle Tab button styles
-        ["all", "PASS", "BLOCK"].forEach(t => {
+        ["all", "PASS", "BLOCK", "INFO"].forEach(t => {
             const btn = document.getElementById("tab-" + t);
             if (btn) {
                 if (t === type) {

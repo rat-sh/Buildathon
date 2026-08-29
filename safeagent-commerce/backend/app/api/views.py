@@ -59,7 +59,7 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
             "actor": e.actor,
             "action": e.action,
             "decision": e.decision.value,
-            "reason_code": e.reason_code or "PASS",
+            "reason_code": e.reason_code or ("PASS" if e.decision.value == "PASS" else ("BLOCK" if e.decision.value == "BLOCK" else "INFO")),
             "session_id": e.session_id or "-",
             "buyer_id": e.buyer_id or "-",
             "target_type": e.target_type or "-",
