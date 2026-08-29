@@ -2,6 +2,7 @@
 agents/__init__.py — Core Agent exports
 """
 
+from app.agents.catalog import CatalogAgent
 from app.agents.payment import PaymentAgent
 from app.agents.shopping import ShoppingAgent
 from app.agents.suggestion import SuggestionAgent
@@ -12,4 +13,5 @@ __all__ = [
     "PaymentAgent",
     "ShoppingAgent",
     "SuggestionAgent",
+    "CatalogAgent",
 ]
