@@ -1,130 +1,205 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Audit Log — SafeAgent Commerce{% endblock %}
+{% block title %}Safety Audit Log — SafeAgent Commerce{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-
-    <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                📋 Immutable Audit Trail
-            </h2>
-            <p class="text-xs text-slate-400 mt-1">
-                Structured decision records logged for every money-touching action and Validator check.
+<div class="h-full scroll-container">
+    <div class="max-w-4xl mx-auto px-8 py-8">
+        
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-semibold tracking-tight" style="color: var(--color-foreground);">
+                Safety Audit Log
+            </h1>
+            <p class="text-sm mt-1.5" style="color: var(--color-muted-foreground);">
+                Every payment decision is recorded and explainable — nothing happens without a trace.
             </p>
         </div>
-        <div class="flex items-center space-x-2">
-            <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3.5 py-2 rounded-lg font-medium transition-colors border border-slate-700">
-                🔄 Refresh Logs
+
+        <!-- Stats Row -->
+        {% set total_count = events|length %}
+        {% set pass_count = events|selectattr("decision", "equalto", "PASS")|list|length %}
+        {% set block_count = events|selectattr("decision", "equalto", "BLOCK")|list|length %}
+
+        <div class="grid grid-cols-3 gap-4 mb-7">
+            <!-- Stat 1: Total -->
+            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-card); borderColor: var(--color-border);">
+                <p class="text-xs font-medium" style="color: var(--color-muted-foreground);">Total decisions</p>
+                <p class="text-2xl font-semibold mt-1" style="color: var(--color-foreground);">{{ total_count }}</p>
+            </div>
+            <!-- Stat 2: Approved -->
+            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-success-bg); borderColor: var(--color-success-border);">
+                <p class="text-xs font-medium" style="color: var(--color-success);">Approved (PASS)</p>
+                <p class="text-2xl font-semibold mt-1" style="color: var(--color-success);">{{ pass_count }}</p>
+            </div>
+            <!-- Stat 3: Blocked -->
+            <div class="rounded-xl px-5 py-4 border shadow-sm" style="background: var(--color-danger-bg); borderColor: var(--color-danger-border);">
+                <p class="text-xs font-medium" style="color: var(--color-danger);">Blocked (REJECT)</p>
+                <p class="text-2xl font-semibold mt-1" style="color: var(--color-danger);">{{ block_count }}</p>
+            </div>
+        </div>
+
+        <!-- Filter Tabs (Figma exact match) -->
+        <div class="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit border" style="background: var(--color-secondary); borderColor: var(--color-border);">
+            <button onclick="filterAudit('all')" id="tab-all" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-white text-slate-900 shadow-sm">
+                All decisions
+            </button>
+            <button onclick="filterAudit('PASS')" id="tab-PASS" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
+                Approved
+            </button>
+            <button onclick="filterAudit('BLOCK')" id="tab-BLOCK" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900">
+                Blocked
             </button>
         </div>
-    </div>
 
-    <!-- Filter Pills -->
-    <div class="flex items-center space-x-2 text-xs font-medium">
-        <button onclick="filterLogs('ALL')" class="filter-btn bg-indigo-600 text-white px-3 py-1.5 rounded-md">All Events</button>
-        <button onclick="filterLogs('PASS')" class="filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-md">PASS Only</button>
-        <button onclick="filterLogs('BLOCK')" class="filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-md">BLOCK Only</button>
-    </div>
+        <!-- Audit Records List -->
+        <div class="space-y-3" id="audit-list">
+            {% if not events %}
+            <div class="rounded-xl border p-12 text-center" style="background: var(--color-card); borderColor: var(--color-border);">
+                <p class="text-sm" style="color: var(--color-muted-foreground);">
+                    No audit records logged yet. Interact with the Shopping Assistant or run the AI buyer demo to generate events.
+                </p>
+            </div>
+            {% endif %}
 
-    <!-- Audit Events Table -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-slate-800/90 uppercase text-[11px] text-slate-400 font-semibold border-b border-slate-700">
-                    <tr>
-                        <th class="py-3 px-4">ID</th>
-                        <th class="py-3 px-4">Timestamp</th>
-                        <th class="py-3 px-4">Actor</th>
-                        <th class="py-3 px-4">Action</th>
-                        <th class="py-3 px-4">Decision</th>
-                        <th class="py-3 px-4">Reason Code</th>
-                        <th class="py-3 px-4">Message</th>
-                        <th class="py-3 px-4 text-right">Evidence</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800/60 font-mono text-[11px]">
-                    {% if not events %}
-                    <tr>
-                        <td colspan="8" class="text-center py-8 text-slate-500 italic">No audit events recorded yet. Perform a checkout or run the AI buyer demo script to generate logs.</td>
-                    </tr>
-                    {% endif %}
+            {% for event in events %}
+            {% set is_pass = event.decision == "PASS" %}
+            <div class="audit-row-item rounded-xl border overflow-hidden transition-all shadow-sm"
+                 data-decision="{{ event.decision }}"
+                 style="background: var(--color-card); borderColor: var(--color-border);"
+                 id="card-{{ event.id }}">
+                
+                <button onclick="toggleExpand({{ event.id }})" 
+                        class="w-full text-left px-5 py-4 flex items-start gap-4 hover:bg-slate-50/80 transition-colors">
+                    
+                    <!-- Status Indicator Badge -->
+                    <div class="shrink-0 mt-0.5">
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold"
+                             style="background: {{ 'var(--color-success-bg)' if is_pass else 'var(--color-danger-bg)' }};
+                                    borderColor: {{ 'var(--color-success-border)' if is_pass else 'var(--color-danger-border)' }};
+                                    color: {{ 'var(--color-success)' if is_pass else 'var(--color-danger)' }};">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background: {{ '#16a34a' if is_pass else '#dc2626' }};"></span>
+                            <span>{{ 'Allowed' if is_pass else 'Blocked' }}</span>
+                        </div>
+                    </div>
 
-                    {% for event in events %}
-                    <tr class="event-row hover:bg-slate-800/40 transition-colors" data-decision="{{ event.decision }}">
-                        <td class="py-3 px-4 text-slate-500">#{{ event.id }}</td>
-                        <td class="py-3 px-4 text-slate-400 whitespace-nowrap">{{ event.created_at }}</td>
-                        <td class="py-3 px-4">
-                            <span class="bg-slate-800 text-slate-200 px-2 py-0.5 rounded font-medium">{{ event.actor }}</span>
-                        </td>
-                        <td class="py-3 px-4 font-semibold text-slate-200">{{ event.action }}</td>
-                        <td class="py-3 px-4">
-                            {% if event.decision == "PASS" %}
-                            <span class="bg-emerald-950 text-emerald-300 border border-emerald-800 px-2.5 py-0.5 rounded-full font-bold">PASS</span>
-                            {% elif event.decision == "BLOCK" %}
-                            <span class="bg-rose-950 text-rose-300 border border-rose-800 px-2.5 py-0.5 rounded-full font-bold">BLOCK</span>
-                            {% else %}
-                            <span class="bg-sky-950 text-sky-300 border border-sky-800 px-2.5 py-0.5 rounded-full font-bold">{{ event.decision }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="py-3 px-4">
-                            {% if event.reason_code == "PASS" %}
-                            <span class="text-emerald-400 font-semibold">PASS</span>
-                            {% else %}
-                            <span class="text-amber-400 font-semibold">{{ event.reason_code }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="py-3 px-4 max-w-xs truncate font-sans text-slate-300" title="{{ event.message }}">{{ event.message }}</td>
-                        <td class="py-3 px-4 text-right">
-                            {% if event.evidence_json %}
-                            <button onclick="toggleEvidence({{ event.id }})" class="text-indigo-400 hover:underline text-[11px] font-sans">View Raw JSON 🔍</button>
-                            {% else %}
-                            <span class="text-slate-600">-</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% if event.evidence_json %}
-                    <tr id="evidence-{{ event.id }}" class="hidden bg-slate-950/80">
-                        <td colspan="8" class="p-4">
-                            <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-slate-300 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap max-h-48">
-                                {{ event.evidence_json }}
+                    <!-- Main Content Header -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-4">
+                            <p class="text-sm font-medium leading-snug" style="color: var(--color-foreground);">
+                                {{ event.message }}
+                            </p>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="text-xs font-mono font-semibold" style="color: var(--color-muted-foreground);">
+                                    #{{ event.id }}
+                                </span>
+                                <svg id="chevron-{{ event.id }}" class="transition-transform duration-200" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="2.5" strokeLinecap="round">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
                             </div>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                        </div>
 
+                        <!-- Code & Timestamp details -->
+                        <div class="flex items-center gap-3 mt-1.5">
+                            <span class="mono text-xs px-2 py-0.5 rounded font-medium"
+                                  style="background: var(--color-secondary); color: var(--color-muted-foreground);">
+                                {{ event.reason_code }}
+                            </span>
+                            <span class="text-xs" style="color: var(--color-muted-foreground);">
+                                {{ event.created_at }}
+                            </span>
+                            <span class="text-xs font-medium text-slate-400">
+                                Actor: <strong class="text-slate-600 font-sans">{{ event.actor }}</strong>
+                            </span>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Expanded Detail Accordion -->
+                <div id="detail-{{ event.id }}" class="hidden px-5 pb-5 pt-2 border-t text-xs" style="borderColor: var(--color-border);">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                        <div class="space-y-3">
+                            <div>
+                                <p class="font-medium text-slate-500 mb-0.5">Session / Buyer Token</p>
+                                <p class="mono text-slate-800">{{ event.buyer_id if event.buyer_id != "-" else event.session_id }}</p>
+                            </div>
+                            <div>
+                                <p class="font-medium text-slate-500 mb-0.5">Action Executed</p>
+                                <p class="mono font-semibold text-slate-800">{{ event.action }}</p>
+                            </div>
+                            <div>
+                                <p class="font-medium text-slate-500 mb-0.5">Target Entity</p>
+                                <p class="text-slate-800">{{ event.target_type }} (ID: {{ event.target_id }})</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="font-medium text-slate-500 mb-1.5">Raw Evidence JSON Snapshot</p>
+                            <div class="mono bg-slate-900 text-slate-200 rounded-lg p-3 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-44 border border-slate-800">
+                                {{ event.evidence_json if event.evidence_json else "{}" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tamper-Evident Footer Note (Figma exact match) -->
+        <div class="mt-8 rounded-xl px-5 py-4 flex items-start gap-3 border shadow-sm"
+             style="background: var(--color-secondary); borderColor: var(--color-border);">
+            <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted-foreground)" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <div>
+                <p class="text-xs font-medium" style="color: var(--color-foreground);">
+                    Tamper-evident log
+                </p>
+                <p class="text-xs mt-0.5 leading-relaxed" style="color: var(--color-muted-foreground);">
+                    These records are written by the Validator, not the AI. The AI cannot modify or delete entries. Each record is immutable and stored securely in the database.
+                </p>
+            </div>
+        </div>
+
+    </div>
 </div>
 
 <script>
-    function toggleEvidence(id) {
-        const el = document.getElementById('evidence-' + id);
-        if (el) el.classList.toggle('hidden');
+    function toggleExpand(id) {
+        const detail = document.getElementById("detail-" + id);
+        const chevron = document.getElementById("chevron-" + id);
+
+        if (detail.classList.contains("hidden")) {
+            detail.classList.remove("hidden");
+            if (chevron) chevron.style.transform = "rotate(180deg)";
+        } else {
+            detail.classList.add("hidden");
+            if (chevron) chevron.style.transform = "rotate(0deg)";
+        }
     }
 
-    function filterLogs(decision) {
-        const rows = document.querySelectorAll('.event-row');
+    function filterAudit(type) {
+        const rows = document.querySelectorAll(".audit-row-item");
         rows.forEach(row => {
-            if (decision === 'ALL' || row.getAttribute('data-decision') === decision) {
-                row.style.display = '';
+            const dec = row.getAttribute("data-decision");
+            if (type === "all" || dec === type) {
+                row.style.display = "block";
             } else {
-                row.style.display = 'none';
+                row.style.display = "none";
             }
         });
 
-        const btns = document.querySelectorAll('.filter-btn');
-        btns.forEach(btn => {
-            btn.classList.remove('bg-indigo-600', 'text-white');
-            btn.classList.add('bg-slate-800', 'text-slate-300');
+        // Toggle Tab button styles
+        ["all", "PASS", "BLOCK"].forEach(t => {
+            const btn = document.getElementById("tab-" + t);
+            if (btn) {
+                if (t === type) {
+                    btn.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all bg-white text-slate-900 shadow-sm";
+                } else {
+                    btn.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-500 hover:text-slate-900";
+                }
+            }
         });
-        event.target.classList.remove('bg-slate-800', 'text-slate-300');
-        event.target.classList.add('bg-indigo-600', 'text-white');
     }
 </script>
 {% endblock %}

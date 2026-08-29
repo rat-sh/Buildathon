@@ -1,50 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SafeAgent Commerce — Razorpay Buildathon{% endblock %}</title>
-    <!-- HTMX for dynamic interactive UI without heavy JS framework -->
+    <!-- HTMX for dynamic interactions without SPA rewrite -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <!-- Tailwind CSS CDN for clean styling -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); }
-        .pass-badge { background-color: #059669; color: #ecfdf5; }
-        .block-badge { background-color: #dc2626; color: #fef2f2; }
-    </style>
+    <!-- Custom CSS Variables & Animations from Figma -->
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+<body class="h-full flex flex-col antialiased selection:bg-blue-100 selection:text-blue-900" style="background: var(--color-background); color: var(--color-foreground);">
 
-    <!-- Header / Navbar -->
-    <header class="border-b border-slate-800 glass sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
-                    🛡️
+    <!-- Global Top Nav Header (Figma exact match) -->
+    <header class="shrink-0 border-b z-50 shadow-sm" style="background: var(--color-card); borderColor: var(--color-border);">
+        <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+            
+            <!-- Brand Logo & Title -->
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-7 h-7 rounded flex items-center justify-center transition-transform group-hover:scale-105" style="background: var(--color-primary);">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M7 1L12 4v3c0 3-2 5-5 6C4 13 2 11 2 7V4L7 1z" fill="white" fill-opacity="0.95" />
+                    </svg>
                 </div>
-                <div>
-                    <h1 class="font-bold text-lg text-white leading-none">SafeAgent Commerce</h1>
-                    <p class="text-xs text-slate-400 mt-0.5">Razorpay Buildathon 2026 — Track 01</p>
-                </div>
-            </div>
-            <nav class="flex items-center space-x-4 text-sm font-medium">
-                <a href="/" class="hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-800">💬 Chat Shop</a>
-                <a href="/admin/audit" class="hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-800">📋 Audit Log</a>
-                <a href="/docs" target="_blank" class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-md hover:bg-slate-700">Swagger API Docs ↗</a>
+                <span class="font-semibold text-sm tracking-tight" style="color: var(--color-foreground);">
+                    SafeAgent Commerce
+                </span>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="flex items-center gap-1.5">
+                <a href="/" 
+                   class="px-4 py-1.5 rounded text-sm font-medium transition-all {% if active_page == 'chat' or active_page == 'shopping' %}bg-slate-100 text-blue-700 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                   Shopping
+                </a>
+                <a href="/admin/audit" 
+                   class="px-4 py-1.5 rounded text-sm font-medium transition-all {% if active_page == 'audit' %}bg-slate-100 text-blue-700 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                   Audit Log
+                </a>
             </nav>
+
+            <!-- Status Pill & API Link -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mono"
+                     style="background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border);">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse inline-block"></span>
+                    Validator active
+                </div>
+                <a href="/docs" target="_blank" class="hidden sm:inline-flex text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded transition-colors">
+                    API Docs ↗
+                </a>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content Body -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col">
+    <!-- Main Content Area -->
+    <main class="flex-1 min-h-0 flex flex-col">
         {% block content %}{% endblock %}
     </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-800 py-3 text-center text-xs text-slate-500">
-        SafeAgent Commerce • Validator-Gated Agentic Architecture • LLMs propose, Deterministic Validator decides, Payment Agent executes.
-    </footer>
 
 </body>
 </html>

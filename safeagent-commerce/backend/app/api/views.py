@@ -1,9 +1,9 @@
 """
 api/views.py — HTML View Router (Jinja2 Templates)
 ==================================================
-Serves HTML views:
-  - GET /               -> Chat Shop interface
-  - GET /admin/audit    -> Admin Audit Log viewer interface
+Serves HTML views matching Figma design:
+  - GET /               -> AI Shopping Assistant chat interface
+  - GET /admin/audit    -> Safety Audit Log viewer interface
 """
 
 import structlog
@@ -23,13 +23,14 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/")
 async def chat_view(request: Request):
-    """Render customer chat interface."""
+    """Render customer AI Shopping Assistant chat interface."""
     session_id = generate_session_id()
     return templates.TemplateResponse(
         "chat.html",
         {
             "request": request,
             "session_id": session_id,
+            "active_page": "shopping",
         },
     )
 
@@ -63,7 +64,7 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
             "target_id": e.target_id or "-",
             "evidence_json": evidence_str,
             "message": e.message or "-",
-            "created_at": e.created_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "created_at": e.created_at.strftime("%Y-%m-%d · %H:%M:%S UTC"),
         })
 
     return templates.TemplateResponse(
@@ -71,5 +72,6 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
         {
             "request": request,
             "events": processed_events,
+            "active_page": "audit",
         },
     )
