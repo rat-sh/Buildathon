@@ -40,7 +40,7 @@ class ValidationResult(BaseModel):
     is_valid: bool = Field(description="True if all checks passed, False otherwise")
     decision: str = Field(description="PASS or BLOCK")
     reason_code: str = Field(
-        description="Reason code: PASS, ITEM_NOT_FOUND, ITEM_INACTIVE, PRICE_MISMATCH, STOCK_OUT, TX_LIMIT_EXCEEDED, DAILY_LIMIT_EXCEEDED, ADDON_NOT_ACCEPTED, DUPLICATE_IDEMPOTENCY_KEY"
+        description="Reason code: PASS, ITEM_NOT_FOUND, ITEM_INACTIVE, PRICE_MISMATCH, STOCK_OUT, TX_LIMIT_EXCEEDED, DAILY_LIMIT_EXCEEDED, ADDON_NOT_ACCEPTED, DUPLICATE_IDEMPOTENCY_KEY, CART_ALREADY_PAID"
     )
     cart_id: int
     idempotency_key: str

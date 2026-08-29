@@ -12,7 +12,7 @@ ARCHITECTURE PRINCIPLE:
 7 checks (reason codes):
   ITEM_NOT_FOUND | ITEM_INACTIVE | PRICE_MISMATCH | STOCK_OUT |
   TX_LIMIT_EXCEEDED | DAILY_LIMIT_EXCEEDED | ADDON_NOT_ACCEPTED |
-  DUPLICATE_IDEMPOTENCY_KEY
+  DUPLICATE_IDEMPOTENCY_KEY | CART_ALREADY_PAID
 """
 
 import time
@@ -24,6 +24,7 @@ from sqlalchemy.orm import selectinload
 
 from app.agents.validator_checks import (
     check_addon_accepted,
+    check_cart_checkout_eligible,
     check_daily_ceiling,
     check_idempotency,
     check_item_active,
@@ -71,6 +72,9 @@ class ValidatorAgent:
             return _block(request, "ITEM_NOT_FOUND", 0,
                           {"check": "cart_not_empty", "items_count": 0},
                           "Cart is empty.")
+
+        if (result := await check_cart_checkout_eligible(db, request, cart)):
+            return result
 
         cart_total = cart.total_paisa
 

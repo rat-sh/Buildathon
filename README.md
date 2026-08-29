@@ -71,6 +71,7 @@ Suggestion Agent (opt-in only, explicit accept required)
 | `DAILY_LIMIT_EXCEEDED` | Daily spend ceiling would be breached |
 | `ADDON_NOT_ACCEPTED` | Add-on in cart not explicitly accepted |
 | `DUPLICATE_IDEMPOTENCY_KEY` | This idempotency key was already used |
+| `CART_ALREADY_PAID` | Cart already paid or has a captured order |
 
 ---
 

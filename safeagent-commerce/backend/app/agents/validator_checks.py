@@ -36,6 +36,49 @@ def _block(request: ValidationRequest, reason_code: str, total_paisa: int, evide
     )
 
 
+async def check_cart_checkout_eligible(
+    db: AsyncSession,
+    request: ValidationRequest,
+    cart,
+) -> ValidationResult | None:
+    """Check 0: Cart must not already be paid or have a captured order."""
+    from app.models.cart import CartStatus
+
+    if cart.status == CartStatus.PAID:
+        logger.warning("Validator BLOCK: cart already paid", cart_id=cart.id)
+        return _block(
+            request, "CART_ALREADY_PAID", cart.total_paisa,
+            {"check": "cart_not_paid", "cart_id": cart.id, "cart_status": cart.status.value},
+            f"Cart #{cart.id} has already been paid. Start a new cart to purchase again.",
+        )
+
+    captured = (await db.execute(
+        select(Order).where(
+            Order.cart_id == cart.id,
+            Order.status == OrderStatus.CAPTURED,
+        )
+    )).scalar_one_or_none()
+
+    if captured:
+        logger.warning(
+            "Validator BLOCK: captured order exists",
+            cart_id=cart.id,
+            order_id=captured.id,
+        )
+        return _block(
+            request, "CART_ALREADY_PAID", cart.total_paisa,
+            {
+                "check": "no_captured_order",
+                "cart_id": cart.id,
+                "captured_order_id": captured.id,
+                "razorpay_order_id": captured.razorpay_order_id,
+            },
+            f"Cart #{cart.id} already has a captured payment (order #{captured.id}).",
+        )
+
+    return None
+
+
 async def check_idempotency(db: AsyncSession, request: ValidationRequest) -> ValidationResult | None:
     """Check 7: Idempotency key must be unique — prevents double-charges."""
     existing = (await db.execute(

@@ -12,7 +12,7 @@
 const sessionId   = document.getElementById("chat-root").dataset.sessionId;
 let activeCartId  = null;
 let cartItems     = [];   // READ-ONLY cache — always set via fetchCartFromBackend()
-let checkoutState = "idle"; // "idle" | "validating" | "approved" | "blocked"
+let checkoutState = "idle"; // "idle" | "validating" | "approved" | "blocked" | "paid"
 
 // ── Input wiring ──────────────────────────────────────────────────────────────
 const chatInput = document.getElementById("chat-input");

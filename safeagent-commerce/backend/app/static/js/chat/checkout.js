@@ -108,6 +108,9 @@ function showPaymentSuccess(result) {
      * Show a success message in the chat stream after payment capture.
      * Refreshes cart so sidebar shows PAID state.
      */
+    checkoutState = "paid";
+    updateValidatorBox();
+
     const c = document.getElementById("messages-container");
     const div = document.createElement("div");
     div.className = "message-enter flex justify-center";

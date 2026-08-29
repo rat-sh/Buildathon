@@ -354,3 +354,70 @@ async def test_validator_duplicate_idempotency(test_db: AsyncSession, seed_produ
     assert res.is_valid is False
     assert res.decision == "BLOCK"
     assert res.reason_code == "DUPLICATE_IDEMPOTENCY_KEY"
+
+
+# ── TEST 10: CART_ALREADY_PAID (paid cart status) ────────────────────────────
+@pytest.mark.asyncio
+async def test_validator_cart_already_paid_status(test_db: AsyncSession, seed_products):
+    cart = Cart(session_id="sess_paid", status=CartStatus.PAID)
+    test_db.add(cart)
+    await test_db.commit()
+
+    item = CartItem(
+        cart_id=cart.id,
+        product_id=1,
+        quantity=1,
+        charged_price_paisa=399900,
+    )
+    test_db.add(item)
+    await test_db.commit()
+
+    req = ValidationRequest(
+        cart_id=cart.id,
+        idempotency_key="idemp_paid_cart",
+        session_id="sess_paid",
+        is_ai_buyer=False,
+    )
+    res = await ValidatorAgent.validate_cart(test_db, req)
+
+    assert res.is_valid is False
+    assert res.decision == "BLOCK"
+    assert res.reason_code == "CART_ALREADY_PAID"
+
+
+# ── TEST 11: CART_ALREADY_PAID (captured order on open cart) ─────────────────
+@pytest.mark.asyncio
+async def test_validator_cart_already_paid_captured_order(test_db: AsyncSession, seed_products):
+    cart = Cart(session_id="sess_captured", status=CartStatus.LOCKED)
+    test_db.add(cart)
+    await test_db.commit()
+
+    item = CartItem(
+        cart_id=cart.id,
+        product_id=1,
+        quantity=1,
+        charged_price_paisa=399900,
+    )
+    test_db.add(item)
+
+    captured_order = Order(
+        cart_id=cart.id,
+        idempotency_key="idemp_captured",
+        amount_paisa=399900,
+        status=OrderStatus.CAPTURED,
+        session_id="sess_captured",
+    )
+    test_db.add(captured_order)
+    await test_db.commit()
+
+    req = ValidationRequest(
+        cart_id=cart.id,
+        idempotency_key="idemp_retry_after_capture",
+        session_id="sess_captured",
+        is_ai_buyer=False,
+    )
+    res = await ValidatorAgent.validate_cart(test_db, req)
+
+    assert res.is_valid is False
+    assert res.decision == "BLOCK"
+    assert res.reason_code == "CART_ALREADY_PAID"

@@ -14,7 +14,11 @@ async function fetchCartFromBackend() {
         const data = await fetchCart(activeCartId);
         if (!data) return;
         cartItems = data.items || [];
+        if (data.status === "paid") {
+            checkoutState = "paid";
+        }
         renderCart();
+        updateValidatorBox();
     } catch (_) {
         // Silent — cart shows stale state rather than crash
     }
@@ -65,7 +69,7 @@ function renderCart() {
 
     countEl.textContent = `${cartItems.length} item${cartItems.length > 1 ? "s" : ""}`;
     totalEl.textContent = formatINR(total);
-    btn.disabled = checkoutState === "validating";
+    btn.disabled = checkoutState === "validating" || checkoutState === "paid";
 }
 
 function updateValidatorBox(customMessage, reasonCode, checkoutData) {
@@ -111,6 +115,15 @@ function updateValidatorBox(customMessage, reasonCode, checkoutData) {
                 </svg><span>Payment Blocked (${reasonCode || "REJECTED"})</span></div>
                 <p class="text-red-700">${escapeHtml(customMessage)}</p>`,
             btnText: "Retry Checkout", btnDisabled: false
+        },
+        paid: {
+            bg: "var(--color-success-bg)", border: "var(--color-success-border)",
+            html: `<div class="flex items-center gap-2 text-emerald-800 font-semibold">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg><span>Order Complete</span></div>
+                <p class="text-emerald-700">Payment captured. Add new items to start another order.</p>`,
+            btnText: "Paid", btnDisabled: true
         }
     };
 
