@@ -106,8 +106,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 
     # Admin audit log — Phase 5
-    # from app.api.admin import router as admin_router
-    # app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    from app.api.admin import router as admin_router
+    app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
 
 # ── Application instance ──────────────────────────────────────────────────────
