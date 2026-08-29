@@ -1,0 +1,6 @@
+# Ignore Figma design exports and source files
+Figma/
+full fgma/
+figma/
+design-export/
+*.fig
