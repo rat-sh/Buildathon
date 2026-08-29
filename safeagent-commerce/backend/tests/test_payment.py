@@ -9,16 +9,12 @@ Tests:
   5. Webhook handler processes valid payment.captured event and updates order status
 """
 
-import hmac
-import hashlib
-import json
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.core.database import Base, get_db
-from app.core.config import settings
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.order import Order, OrderStatus
 from app.models.product import Product
@@ -39,6 +35,19 @@ async def test_db():
         yield session
 
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def webhook_client(test_db: AsyncSession):
+    """TestClient wired to the in-memory test_db (tables migrated)."""
+
+    async def override_get_db():
+        yield test_db
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()
 
 
 # ── TEST 1: PaymentAgent Execution with Valid Pass Token ──────────────────────
@@ -114,23 +123,21 @@ async def test_payment_agent_max_retries_exceeded(test_db: AsyncSession):
 
 
 # ── TEST 4: Webhook HMAC Signature Failure Rejection ─────────────────────────
-def test_webhook_invalid_hmac_rejected():
-    client = TestClient(app)
-
+@pytest.mark.asyncio
+async def test_webhook_invalid_hmac_rejected(webhook_client: TestClient):
     headers = {"X-Razorpay-Signature": "invalid_bogus_signature"}
     payload = {"event": "payment.captured", "payload": {}}
 
-    response = client.post("/webhooks/razorpay", json=payload, headers=headers)
+    response = webhook_client.post("/webhooks/razorpay", json=payload, headers=headers)
 
     assert response.status_code == 400
     assert "Invalid Razorpay webhook signature" in response.json()["detail"]
 
 
 # ── TEST 5: Simulated signature bypass must never work ───────────────────────
-def test_webhook_simulated_sig_rejected():
+@pytest.mark.asyncio
+async def test_webhook_simulated_sig_rejected(webhook_client: TestClient):
     """Even with DEBUG on, forged simulated_valid_sig must be rejected."""
-    client = TestClient(app)
-
     headers = {"X-Razorpay-Signature": "simulated_valid_sig"}
     payload = {
         "event": "payment.captured",
@@ -139,7 +146,7 @@ def test_webhook_simulated_sig_rejected():
         },
     }
 
-    response = client.post("/webhooks/razorpay", json=payload, headers=headers)
+    response = webhook_client.post("/webhooks/razorpay", json=payload, headers=headers)
 
     assert response.status_code == 400
     assert "Invalid Razorpay webhook signature" in response.json()["detail"]
