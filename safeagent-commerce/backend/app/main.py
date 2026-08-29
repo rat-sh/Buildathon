@@ -116,6 +116,10 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.views import router as views_router
     app.include_router(views_router)
 
+    # Cart read (GET /chat/cart/{cart_id}) — frontend DB sync
+    from app.api.cart import router as cart_router
+    app.include_router(cart_router, prefix="/chat", tags=["cart"])
+
 
 # ── Application instance ──────────────────────────────────────────────────────
 app = create_app()
