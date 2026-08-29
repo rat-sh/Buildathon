@@ -18,6 +18,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.pass_token import verify_pass_token
 from app.core.limits import MAX_PAYMENT_RETRIES
 from app.models.cart import Cart, CartStatus
 from app.models.order import Order, OrderStatus
@@ -63,6 +64,15 @@ class PaymentAgent:
             raise ValueError(
                 "SECURITY ERROR: Payment Agent requires a valid ValidatorPassToken. "
                 "No payment can be initiated without Validator PASS."
+            )
+
+        if not verify_pass_token(pass_token):
+            logger.critical(
+                "SECURITY VIOLATION: ValidatorPassToken signature verification failed!",
+                cart_id=pass_token.cart_id,
+            )
+            raise ValueError(
+                "SECURITY ERROR: ValidatorPassToken signature is invalid or missing."
             )
 
         logger.info(

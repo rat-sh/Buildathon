@@ -21,8 +21,9 @@ class ValidationRequest(BaseModel):
 
 class ValidatorPassToken(BaseModel):
     """
-    Cryptographic / structured token representing a successful validation PASS.
-    Passed to Payment Agent as proof of validation.
+    HMAC-signed in-process token representing a successful validation PASS.
+    Signed with APP_SECRET_KEY; verified by PaymentAgent before order creation.
+    Not intended for use across untrusted service boundaries without transport security.
     """
     cart_id: int
     idempotency_key: str
@@ -31,6 +32,7 @@ class ValidatorPassToken(BaseModel):
     buyer_id: Optional[str] = None
     is_ai_buyer: bool = False
     issued_at_timestamp: float
+    signature: Optional[str] = Field(default=None, description="HMAC-SHA256 over token fields")
 
 
 class ValidationResult(BaseModel):

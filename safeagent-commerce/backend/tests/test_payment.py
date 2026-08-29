@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.core.database import Base, get_db
+from app.core.pass_token import sign_pass_token
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.order import Order, OrderStatus
 from app.models.product import Product
@@ -61,14 +62,14 @@ async def test_payment_agent_valid_pass_token(test_db: AsyncSession):
     test_db.add(cart)
     await test_db.commit()
 
-    pass_token = ValidatorPassToken(
+    pass_token = sign_pass_token(ValidatorPassToken(
         cart_id=cart.id,
         idempotency_key="idemp_pay_test_1",
         total_paisa=299900,
         session_id="sess_payment_test",
         is_ai_buyer=False,
         issued_at_timestamp=1722345678.0,
-    )
+    ))
 
     agent = PaymentAgent()
     result = await agent.execute_payment(test_db, pass_token)
@@ -93,6 +94,28 @@ async def test_payment_agent_rejects_missing_pass_token(test_db: AsyncSession):
     assert "ValidatorPassToken" in str(exc_info.value)
 
 
+@pytest.mark.asyncio
+async def test_payment_agent_rejects_unsigned_pass_token(test_db: AsyncSession):
+    cart = Cart(session_id="sess_unsigned", status=CartStatus.OPEN)
+    test_db.add(cart)
+    await test_db.commit()
+
+    unsigned = ValidatorPassToken(
+        cart_id=cart.id,
+        idempotency_key="idemp_unsigned",
+        total_paisa=10000,
+        session_id="sess_unsigned",
+        is_ai_buyer=False,
+        issued_at_timestamp=1722345678.0,
+    )
+
+    agent = PaymentAgent()
+    with pytest.raises(ValueError) as exc_info:
+        await agent.execute_payment(test_db, unsigned)
+
+    assert "signature" in str(exc_info.value).lower()
+
+
 # ── TEST 3: PaymentAgent Enforces MAX_PAYMENT_RETRIES (Max 2) ────────────────
 @pytest.mark.asyncio
 async def test_payment_agent_max_retries_exceeded(test_db: AsyncSession):
@@ -106,14 +129,14 @@ async def test_payment_agent_max_retries_exceeded(test_db: AsyncSession):
     test_db.add_all([order1, order2])
     await test_db.commit()
 
-    pass_token = ValidatorPassToken(
+    pass_token = sign_pass_token(ValidatorPassToken(
         cart_id=cart.id,
         idempotency_key="idemp_retry_3",  # Attempt 3 -> should block
         total_paisa=10000,
         session_id="sess_retry_test",
         is_ai_buyer=False,
         issued_at_timestamp=1722345678.0,
-    )
+    ))
 
     agent = PaymentAgent()
     with pytest.raises(RuntimeError) as exc_info:
@@ -185,14 +208,14 @@ async def test_concurrent_checkout_only_one_order():
 
     async def attempt(idempotency_key: str):
         async with factory() as db:
-            token = ValidatorPassToken(
+            token = sign_pass_token(ValidatorPassToken(
                 cart_id=cart_id,
                 idempotency_key=idempotency_key,
                 total_paisa=100000,
                 session_id="sess_concurrent",
                 is_ai_buyer=False,
                 issued_at_timestamp=1722345678.0,
-            )
+            ))
             agent = PaymentAgent(razorpay_service=RazorpayService())
             try:
                 await agent.execute_payment(db, token)

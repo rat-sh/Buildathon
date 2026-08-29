@@ -34,6 +34,7 @@ from app.agents.validator_checks import (
     check_tx_limit,
 )
 from app.core.limits import get_limits_for_buyer
+from app.core.pass_token import sign_pass_token
 from app.models.cart import Cart, CartItem
 from app.schemas.validator import ValidationRequest, ValidationResult, ValidatorPassToken
 
@@ -96,7 +97,7 @@ class ValidatorAgent:
         daily_spent = daily_result if daily_result is not None else 0
 
         # ALL PASSED — issue pass token
-        pass_token = ValidatorPassToken(
+        pass_token = sign_pass_token(ValidatorPassToken(
             cart_id=request.cart_id,
             idempotency_key=request.idempotency_key,
             total_paisa=cart_total,
@@ -104,7 +105,7 @@ class ValidatorAgent:
             buyer_id=request.buyer_id,
             is_ai_buyer=request.is_ai_buyer,
             issued_at_timestamp=time.time(),
-        )
+        ))
         logger.info("Validator PASS: all 7 checks passed", cart_id=request.cart_id, total_paisa=cart_total)
 
         return ValidationResult(
