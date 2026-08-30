@@ -31,9 +31,10 @@ class Settings(BaseSettings):
     APP_SECRET_KEY: str = Field(default="dev-secret-change-in-production-minimum-32-chars")
     DEBUG: bool = Field(default=False)
 
-    # ── Database ──────────────────────────────────────────────────────────────
+    # ── Database (Supabase Postgres — required at runtime) ────────────────────
     DATABASE_URL: str = Field(
-        default="sqlite+aiosqlite:///./safeagent.db"
+        default="",
+        description="postgresql+asyncpg://… Supabase URI (Transaction pooler port 6543 recommended)",
     )
 
     # ── Razorpay — TEST MODE ONLY ─────────────────────────────────────────────
@@ -57,6 +58,22 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = Field(
         default=["http://localhost:8000", "http://localhost:3000"]
     )
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError(
+                "DATABASE_URL is required. Set your Supabase Postgres URI "
+                "(postgresql+asyncpg://…) in .env — see .env.example."
+            )
+        if v.startswith("sqlite"):
+            return v  # allowed for pytest / offline unit tests only
+        if not v.startswith("postgresql"):
+            raise ValueError(
+                "DATABASE_URL must use postgresql+asyncpg:// for Supabase Postgres."
+            )
+        return v
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

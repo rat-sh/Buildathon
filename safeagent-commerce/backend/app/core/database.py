@@ -2,8 +2,8 @@
 database.py — SQLAlchemy 2.0 async engine + session factory
 ============================================================
 Design decisions:
-  - Async engine (aiosqlite for dev, asyncpg for prod)
-  - Session factory via async_sessionmaker
+  - Production/demo: Supabase Postgres via postgresql+asyncpg
+  - Unit tests only: sqlite+aiosqlite (set in tests/conftest.py)
   - init_db() is idempotent — safe to call on every startup
   - Auto-seeds catalog products from data/products.json if DB is empty
 """
@@ -28,11 +28,19 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
-)
+def _build_engine(url: str):
+    """Configure engine for Supabase Postgres or SQLite (tests)."""
+    kwargs: dict = {"echo": settings.DEBUG}
+    if "sqlite" in url:
+        kwargs["connect_args"] = {"check_same_thread": False}
+    elif "postgresql" in url:
+        # Supabase Transaction pooler (port 6543): disable asyncpg prepared stmt cache
+        kwargs["connect_args"] = {"statement_cache_size": 0}
+        kwargs["pool_pre_ping"] = True
+    return create_async_engine(url, **kwargs)
+
+
+engine = _build_engine(settings.DATABASE_URL)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,

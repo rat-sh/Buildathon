@@ -10,7 +10,8 @@ jinja2==3.1.4
 
 # ── Database ───────────────────────────────────────────────────────────────────
 sqlalchemy==2.0.30
-aiosqlite==0.20.0          # async SQLite driver
+asyncpg==0.31.0            # Supabase Postgres (postgresql+asyncpg)
+aiosqlite==0.20.0          # offline unit tests only (see tests/conftest.py)
 alembic==1.13.1
 
 # ── Validation ─────────────────────────────────────────────────────────────────
