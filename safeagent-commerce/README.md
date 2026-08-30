@@ -67,10 +67,22 @@ Suggestion Agent (opt-in only, explicit accept required)
 
 1. Create a project at [supabase.com](https://supabase.com).
 2. Go to **Settings → Database → Connection string → URI**.
-3. Copy the **Transaction pooler** URI (port **6543**) and convert to asyncpg format:
+3. Copy the **Session mode** URI (port 5432) or **Transaction pooler** (port 6543) and convert to asyncpg:
 
 ```bash
-postgresql+asyncpg://postgres.[project-ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
+# Session mode (init_db / first run — project dzajfadmwhexrcloytdr example):
+postgresql+asyncpg://postgres:[PASSWORD]@db.dzajfadmwhexrcloytdr.supabase.co:5432/postgres
+
+# Transaction pooler (6543 — recommended under concurrent load):
+postgresql+asyncpg://postgres.dzajfadmwhexrcloytdr:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
+```
+
+Optional Supabase CLI:
+
+```bash
+supabase login
+supabase init
+supabase link --project-ref dzajfadmwhexrcloytdr
 ```
 
 4. Copy env template and fill in values:
@@ -139,15 +151,40 @@ Tests use in-memory SQLite automatically — no Supabase connection required for
 
 ## Known Limitations (Buildathon Scope)
 
+### Fixed in this codebase
+
+**Dual capture paths / stock update.** Previously `app/api/webhooks.py` (on `payment.captured` / `order.paid`) and `app/api/payment_verify.py` could both mark an order CAPTURED and cart PAID independently, but only the webhook decremented stock. **Fixed:** both paths now call `services/order_fulfillment.mark_order_captured()` — idempotent, stock decrements exactly once whether verify-payment, webhook, or both run.
+
+**SQLite as the deployment database.** The app previously defaulted to `sqlite+aiosqlite:///./safeagent.db`. **Fixed:** runtime requires `DATABASE_URL=postgresql+asyncpg://…` (Supabase Postgres). SQLite is used only by `pytest` via `tests/conftest.py`.
+
+### Intentional scope boundaries (not bugs)
+
+**“MCP-style” means REST, not MCP.** Catalog routes are HTTP handlers shaped like tool calls for `ai_buyer/demo_buyer.py` — there is no JSON-RPC transport and no Model Context Protocol server underneath.
+
+**INR / paisa only.** Every amount is integer paisa; there is no multi-currency ledger.
+
+**No refund, dispute, or chargeback flow.** Explicitly out of scope for a track about growth and checkout, not the full payments lifecycle.
+
+**PASS token is in-process HMAC, not a distributed mandate service.** Genuinely unforgeable within this architecture (HMAC over fields + 15-minute TTL), but not a standalone signed-mandate microservice that another service could independently verify — related to, but different from, AP2-style mandates.
+
+**Admin auth is a shared secret (`X-Admin-Key`), not SSO/OIDC.** Appropriate for a buildathon demo, not for a real merchant ops team at scale.
+
+**Demo catalog is seeded from `data/products.json`.** ~20 static products, not a live merchant inventory feed.
+
+**AP2 / ACP / x402 wire compliance.** Not claimed for this submission.
+
+### Quick reference
+
 | Area | Status |
 |------|--------|
-| Dual capture paths / stock double-decrement | **Fixed** — `mark_order_captured()` is the single idempotent path for webhook + verify-payment |
-| SQLite as default DB | **Fixed** — Supabase Postgres is the primary/documented deployment DB |
-| MCP-style catalog API | REST endpoints only (no full MCP server) |
+| Dual capture / stock | **Fixed** — `mark_order_captured()` |
+| Primary DB | **Fixed** — Supabase Postgres via `DATABASE_URL` |
+| MCP-style catalog | REST only (by design) |
 | Currency | INR / paisa only |
 | Refunds / chargebacks | Out of scope |
-| Admin auth | `X-Admin-Key` header (demo-appropriate) |
-| AP2 / ACP / x402 wire compliance | Not claimed |
+| PASS token | In-process HMAC + TTL |
+| Admin auth | `X-Admin-Key` (demo) |
+| Catalog source | `data/products.json` seed |
 
 ---
 
