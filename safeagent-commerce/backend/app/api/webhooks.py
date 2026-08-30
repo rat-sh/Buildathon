@@ -11,20 +11,18 @@ SAFETY CONTRACT (NON-NEGOTIABLE):
 """
 
 import json
-from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_razorpay_webhook_signature
-from app.models.cart import Cart, CartItem, CartStatus
 from app.models.order import Order, OrderStatus
 from app.services.audit_service import AuditService
+from app.services.order_fulfillment import mark_order_captured
 
 logger = structlog.get_logger(__name__)
 
@@ -122,50 +120,13 @@ async def razorpay_webhook(
             logger.warning("Order not found in DB for webhook", rzp_order_id=rzp_order_id)
             return {"status": "ignored", "reason": "order_not_found"}
 
-        # Idempotent status update: only transition if not already captured
-        if order.status != OrderStatus.CAPTURED:
-            order.status = OrderStatus.CAPTURED
-            order.razorpay_payment_id = rzp_payment_id
-            order.captured_at = datetime.now(timezone.utc)
-
-            # Update associated cart to PAID and decrement stock
-            stmt_cart = select(Cart).where(Cart.id == order.cart_id)
-            cart = (await db.execute(stmt_cart)).scalar_one_or_none()
-            if cart:
-                cart.status = CartStatus.PAID
-
-            stmt_items = (
-                select(CartItem)
-                .where(CartItem.cart_id == order.cart_id)
-                .options(selectinload(CartItem.product))
-            )
-            cart_items = (await db.execute(stmt_items)).scalars().all()
-            for cart_item in cart_items:
-                if cart_item.product:
-                    cart_item.product.stock_quantity = max(
-                        0, cart_item.product.stock_quantity - cart_item.quantity
-                    )
-
-            await db.commit()
-
-            # Audit Log
-            await AuditService.log_event(
-                db=db,
-                actor="webhook_handler",
-                action="payment_captured",
-                decision="PASS",
-                session_id=order.session_id,
-                buyer_id=order.buyer_id,
-                target_type="order",
-                target_id=str(order.id),
-                evidence={
-                    "razorpay_order_id": rzp_order_id,
-                    "razorpay_payment_id": rzp_payment_id,
-                    "event_type": event_type,
-                    "amount_paisa": order.amount_paisa,
-                },
-                message=f"Payment for order #{order.id} captured via Razorpay webhook.",
-            )
+        await mark_order_captured(
+            db,
+            order,
+            payment_id=rzp_payment_id,
+            source="webhook",
+            event_type=event_type,
+        )
 
         return {"status": "success", "event": event_type, "order_id": order.id}
 
