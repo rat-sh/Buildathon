@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,10 +33,26 @@ async def mark_order_captured(
     """
     Idempotently capture an order: CAPTURED + cart PAID + stock decrement once.
 
+    Uses atomic UPDATE ... WHERE status != CAPTURED so only one concurrent caller
+    performs stock/cart/audit side effects (same pattern as cart lock in PaymentAgent).
+
     Returns True if this call performed the capture transition.
     Returns False if the order was already CAPTURED (no stock change).
     """
-    if order.status == OrderStatus.CAPTURED:
+    captured_at = datetime.now(timezone.utc)
+    capture_values: dict = {
+        "status": OrderStatus.CAPTURED,
+        "captured_at": captured_at,
+    }
+    if payment_id:
+        capture_values["razorpay_payment_id"] = payment_id
+
+    capture_result = await db.execute(
+        update(Order)
+        .where(Order.id == order.id, Order.status != OrderStatus.CAPTURED)
+        .values(**capture_values)
+    )
+    if capture_result.rowcount != 1:
         logger.info(
             "Order already captured — skipping stock decrement",
             order_id=order.id,
@@ -44,10 +60,7 @@ async def mark_order_captured(
         )
         return False
 
-    order.status = OrderStatus.CAPTURED
-    if payment_id:
-        order.razorpay_payment_id = payment_id
-    order.captured_at = datetime.now(timezone.utc)
+    order = (await db.execute(select(Order).where(Order.id == order.id))).scalar_one()
 
     cart = (await db.execute(select(Cart).where(Cart.id == order.cart_id))).scalar_one_or_none()
     if cart:

@@ -1,5 +1,6 @@
 """Tests for idempotent stock decrement on payment capture (webhook + verify)."""
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -7,6 +8,7 @@ import json
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
