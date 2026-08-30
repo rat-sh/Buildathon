@@ -2,9 +2,13 @@
 
 import hashlib
 import hmac
+import time
 
 from app.core.config import settings
 from app.schemas.validator import ValidatorPassToken
+
+# PASS tokens are short-lived — must reach PaymentAgent within this window
+PASS_TOKEN_TTL_SECONDS = 900  # 15 minutes
 
 
 def _token_payload(token: ValidatorPassToken) -> str:
@@ -31,8 +35,10 @@ def sign_pass_token(token: ValidatorPassToken) -> ValidatorPassToken:
 
 
 def verify_pass_token(token: ValidatorPassToken) -> bool:
-    """Verify token signature; rejects missing or tampered tokens."""
+    """Verify token signature and expiry; rejects missing, tampered, or stale tokens."""
     if not token.signature:
+        return False
+    if time.time() - token.issued_at_timestamp > PASS_TOKEN_TTL_SECONDS:
         return False
     expected = hmac.new(
         settings.APP_SECRET_KEY.encode("utf-8"),

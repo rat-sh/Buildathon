@@ -10,6 +10,7 @@ Tests:
 """
 
 import asyncio
+import time
 
 import pytest
 import pytest_asyncio
@@ -68,7 +69,7 @@ async def test_payment_agent_valid_pass_token(test_db: AsyncSession):
         total_paisa=299900,
         session_id="sess_payment_test",
         is_ai_buyer=False,
-        issued_at_timestamp=1722345678.0,
+        issued_at_timestamp=time.time(),
     ))
 
     agent = PaymentAgent()
@@ -106,7 +107,7 @@ async def test_payment_agent_rejects_unsigned_pass_token(test_db: AsyncSession):
         total_paisa=10000,
         session_id="sess_unsigned",
         is_ai_buyer=False,
-        issued_at_timestamp=1722345678.0,
+        issued_at_timestamp=time.time(),
     )
 
     agent = PaymentAgent()
@@ -135,7 +136,7 @@ async def test_payment_agent_max_retries_exceeded(test_db: AsyncSession):
         total_paisa=10000,
         session_id="sess_retry_test",
         is_ai_buyer=False,
-        issued_at_timestamp=1722345678.0,
+        issued_at_timestamp=time.time(),
     ))
 
     agent = PaymentAgent()
@@ -214,7 +215,7 @@ async def test_concurrent_checkout_only_one_order():
                 total_paisa=100000,
                 session_id="sess_concurrent",
                 is_ai_buyer=False,
-                issued_at_timestamp=1722345678.0,
+                issued_at_timestamp=time.time(),
             ))
             agent = PaymentAgent(razorpay_service=RazorpayService())
             try:
