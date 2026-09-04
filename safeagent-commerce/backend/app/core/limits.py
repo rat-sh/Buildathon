@@ -24,8 +24,8 @@ All monetary values are in PAISA (100 paisa = ₹1).
 # Maximum amount allowed in a single cart/transaction.
 # Validator check: cart_total_paisa <= PER_TX_LIMIT_PAISA
 #
-# ₹5,000 = 500,000 paisa
-PER_TX_LIMIT_PAISA: int = 500_000  # ₹5,000
+# ₹10,000 = 1,000,000 paisa
+PER_TX_LIMIT_PAISA: int = 1_000_000  # ₹10,000
 
 # ── Daily Spending Ceiling ────────────────────────────────────────────────────
 # Maximum cumulative spending allowed per session/buyer per calendar day.
@@ -34,8 +34,8 @@ PER_TX_LIMIT_PAISA: int = 500_000  # ₹5,000
 # Applies to BOTH human sessions and AI buyers.
 # AI buyers have an additional mandate-based check.
 #
-# ₹10,000 = 1,000,000 paisa
-DAILY_CEILING_PAISA: int = 1_000_000  # ₹10,000
+# ₹20,000 = 2,000,000 paisa
+DAILY_CEILING_PAISA: int = 2_000_000  # ₹20,000
 
 # ── Payment Retry Limit ───────────────────────────────────────────────────────
 # Maximum number of payment attempts allowed per order.
@@ -47,11 +47,11 @@ MAX_PAYMENT_RETRIES: int = 2
 # AI buyers have tighter limits by default.
 # These apply only when buyer_id is set (AI path).
 #
-# ₹2,000 = 200,000 paisa
-AI_BUYER_PER_TX_LIMIT_PAISA: int = 200_000  # ₹2,000
-
 # ₹5,000 = 500,000 paisa
-AI_BUYER_DAILY_CEILING_PAISA: int = 500_000  # ₹5,000
+AI_BUYER_PER_TX_LIMIT_PAISA: int = 500_000  # ₹5,000
+
+# ₹10,000 = 1,000,000 paisa
+AI_BUYER_DAILY_CEILING_PAISA: int = 1_000_000  # ₹10,000
 
 # ── Cart Configuration ────────────────────────────────────────────────────────
 # Maximum number of distinct items allowed in a single cart

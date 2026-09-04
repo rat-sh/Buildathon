@@ -64,7 +64,7 @@ async def checkout(request: Request, req: CheckoutRequest, db: AsyncSession = De
     if not val_result.is_valid:
         logger.warning("Checkout BLOCKED", cart_id=req.cart_id, reason_code=val_result.reason_code)
         return ChatMessageResponse(
-            reply=f"🚫 Checkout Blocked by Safety Validator: {val_result.message}",
+            reply=f"Checkout Blocked by Safety Validator: {val_result.message}",
             session_id=session_id,
             cart_id=req.cart_id,
             is_blocked=True,
@@ -75,7 +75,7 @@ async def checkout(request: Request, req: CheckoutRequest, db: AsyncSession = De
 
     return ChatMessageResponse(
         reply=(
-            f"✅ Validation Passed! Razorpay Order '{checkout_data['razorpay_order_id']}' created "
+            f"Validation Passed! Razorpay Order '{checkout_data['razorpay_order_id']}' created "
             f"for ₹{checkout_data['amount_rupees']:.2f}. Proceed to payment."
         ),
         session_id=session_id,

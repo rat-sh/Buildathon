@@ -49,6 +49,7 @@ async def chat_view(request: Request):
 @router.get("/admin/audit")
 async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
     """Render ops-console audit log viewer."""
+    from app.core.config import settings
     events = await AuditService.get_events(db=db, limit=200)
     stats = await get_summary_stats(db)
     alerts = await get_threat_alerts(db)
@@ -88,5 +89,6 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
             "stats": stats,
             "alerts": alerts,
             "active_page": "audit",
+            "admin_api_key": settings.ADMIN_API_KEY,
         },
     )

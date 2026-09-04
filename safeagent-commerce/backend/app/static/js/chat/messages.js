@@ -9,15 +9,20 @@ const AI_ICON_HTML = `
         </svg>
     </div>`;
 
-const CATEGORY_EMOJI = {
-    running_shoes: "👟",
-    accessories: "🧦",
-    nutrition: "🥤",
-    electronics: "⌚",
-};
+const QUICK_SUGGESTIONS = [
+    { label: "Running shoes", query: "running shoes" },
+    { label: "Protein bars",  query: "protein bars"  },
+    { label: "Socks",         query: "running socks" },
+    { label: "Water bottle",  query: "water bottle"  },
+    { label: "Recovery gear", query: "foam roller"   },
+];
 
-function productEmoji(p) {
-    return CATEGORY_EMOJI[p.category] || "🛍️";
+function productIcon() {
+    return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+    </svg>`;
 }
 
 function scrollToBottom() {
@@ -72,12 +77,32 @@ function appendSystemInfo(text) {
     scrollToBottom();
 }
 
+function buildNoResultsCard(searchQuery) {
+    const chips = QUICK_SUGGESTIONS.map(s =>
+        `<button class="suggestion-chip" onclick="sendQuickPrompt('${escapeJs(s.query)}')">${escapeHtml(s.label)}</button>`
+    ).join("");
+    const queryHint = searchQuery ? `for <em>"${escapeHtml(searchQuery)}"</em>` : "";
+    return `
+        <div class="no-results-card mt-2">
+            <div class="no-results-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+            </div>
+            <p class="text-sm font-semibold" style="color: var(--color-foreground);">No products found ${queryHint}</p>
+            <p class="text-xs mt-1 leading-relaxed" style="color: var(--color-muted-foreground);">
+                Nothing matched that search in our catalog. Try one of these:
+            </p>
+            <div class="flex flex-wrap gap-2 justify-center mt-3">${chips}</div>
+        </div>`;
+}
+
 function buildProductCard(p) {
     const inCart = cartItems.some(i => i.product_id === p.id);
-    const emoji = productEmoji(p);
     return `
         <div class="product-card rounded-xl p-4 flex flex-col gap-3" style="background: var(--color-card);">
-            <div class="product-card-thumb">${emoji}</div>
+            <div class="product-card-thumb">${productIcon()}</div>
             <div>
                 <span class="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
                       style="background: var(--color-success-bg); color: var(--color-success);">
@@ -95,7 +120,7 @@ function buildProductCard(p) {
                         ${inCart ? "disabled" : ""}
                         class="text-xs font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-60 checkout-btn"
                         style="color: ${inCart ? "var(--color-muted-foreground)" : "white"}; ${inCart ? "background: var(--color-secondary); box-shadow: none;" : ""}">
-                    ${inCart ? "✓ In cart" : "+ Add to cart"}
+                    ${inCart ? "Added" : "+ Add to cart"}
                 </button>
             </div>
         </div>`;
@@ -105,10 +130,7 @@ function buildSuggestionCard(s) {
     const sugId = "sug-" + Date.now() + "-" + s.product_id;
     return `
         <div id="${sugId}" class="suggestion-card p-4 transition-all">
-            <div class="flex items-center gap-2 mb-2">
-                <span class="text-base">✨</span>
-                <p class="text-[11px] font-bold tracking-wide uppercase" style="color: #92400e;">Suggested for you</p>
-            </div>
+            <p class="text-[11px] font-bold tracking-wide uppercase mb-2" style="color: #92400e;">Suggested for you</p>
             <p class="text-sm font-semibold" style="color: var(--color-foreground);">${escapeHtml(s.name)}</p>
             <p class="text-xs mt-1 leading-relaxed" style="color: var(--color-muted-foreground);">${escapeHtml(s.rationale)}</p>
             <p class="text-sm font-bold mt-2" style="color: var(--color-foreground);">${formatINR(s.price_rupees)}</p>
@@ -137,7 +159,10 @@ function appendAIMessage(data) {
     if (data.products?.length > 0) {
         const cards = data.products.map(buildProductCard).join("");
         body += `<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-3">${cards}</div>`;
+    } else if (data._searched) {
+        body += buildNoResultsCard(data._query);
     }
+
     if (data.suggestions?.length > 0) {
         body += `<div class="space-y-3 mt-3">${data.suggestions.map(buildSuggestionCard).join("")}</div>`;
     }

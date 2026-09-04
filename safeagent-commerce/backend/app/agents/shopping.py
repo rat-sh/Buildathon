@@ -11,7 +11,7 @@ SAFETY CONTRACT:
 from typing import Any, Dict, List, Optional
 
 import structlog
-from sqlalchemy import select, or_
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.product import Product
@@ -71,6 +71,7 @@ class ShoppingAgent:
             stmt = stmt.where(Product.price_paisa <= max_price_paisa)
 
         # Keyword filtering on name, description, brand
+        # Use AND across keywords so "running shoes" doesn't match socks.
         if keywords:
             keyword_conditions = []
             for kw in keywords:
@@ -85,12 +86,73 @@ class ShoppingAgent:
                         )
                     )
             if keyword_conditions:
-                stmt = stmt.where(or_(*keyword_conditions))
+                # AND all keyword conditions — every keyword must match at least one field
+                stmt = stmt.where(and_(*keyword_conditions))
 
         stmt = stmt.limit(limit)
         results = (await db.execute(stmt)).scalars().all()
 
-        # If strict keyword match returned empty, fallback to category/price search
+        # Fallback 1: relax keyword AND → OR (in case AND is too strict for a single word)
+        if not results and keywords:
+            relaxed_stmt = select(Product).where(
+                Product.is_active == True,
+                Product.stock_quantity > 0,
+            )
+            if target_category:
+                relaxed_stmt = relaxed_stmt.where(Product.category == target_category)
+            if max_price_paisa:
+                relaxed_stmt = relaxed_stmt.where(Product.price_paisa <= max_price_paisa)
+            kw_or_conditions = []
+            for kw in keywords:
+                if len(kw) >= 3:
+                    pattern = f"%{kw}%"
+                    kw_or_conditions.append(
+                        or_(
+                            Product.name.ilike(pattern),
+                            Product.description.ilike(pattern),
+                            Product.brand.ilike(pattern),
+                            Product.category.ilike(pattern),
+                        )
+                    )
+            if kw_or_conditions:
+                relaxed_stmt = relaxed_stmt.where(or_(*kw_or_conditions))
+            relaxed_stmt = relaxed_stmt.limit(limit)
+            results = (await db.execute(relaxed_stmt)).scalars().all()
+
+        # Fallback 2: If still empty and a price filter is active, drop it so we can
+        # at least show products that exist. The LLM will explain they're over budget.
+        if not results and max_price_paisa:
+            noprice_stmt = select(Product).where(
+                Product.is_active == True,
+                Product.stock_quantity > 0,
+            )
+            if target_category:
+                noprice_stmt = noprice_stmt.where(Product.category == target_category)
+            if keywords:
+                kw_or_conditions = []
+                for kw in keywords:
+                    if len(kw) >= 3:
+                        pattern = f"%{kw}%"
+                        kw_or_conditions.append(
+                            or_(
+                                Product.name.ilike(pattern),
+                                Product.description.ilike(pattern),
+                                Product.brand.ilike(pattern),
+                                Product.category.ilike(pattern),
+                            )
+                        )
+                if kw_or_conditions:
+                    noprice_stmt = noprice_stmt.where(or_(*kw_or_conditions))
+            noprice_stmt = noprice_stmt.limit(limit)
+            results = (await db.execute(noprice_stmt)).scalars().all()
+            if results:
+                logger.info(
+                    "ShoppingAgent: price fallback used — items found above budget",
+                    max_price_paisa=max_price_paisa,
+                    results_count=len(results),
+                )
+
+        # Fallback 3: category/price only (no keywords)
         if not results and (target_category or max_price_paisa):
             fallback_stmt = select(Product).where(
                 Product.is_active == True,

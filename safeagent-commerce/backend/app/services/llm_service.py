@@ -75,7 +75,7 @@ class LLMService:
             "Guidelines:\n"
             "1. Reply warmly and naturally to the user's prompt.\n"
             "2. If products are found, introduce them naturally and explain briefly why they fit the user's request.\n"
-            "3. Respect the user's stated budget when discussing options — never assume they only have ₹5,000.\n"
+            "3. Respect the user's stated budget when discussing options — never assume they only have ₹10,000.\n"
             "4. Keep responses concise (2 to 4 sentences), polite, and natural. Never invent prices or fake items.\n\n"
             f"Matching Catalog Products:\n{catalog_ctx}{budget_ctx}"
         )

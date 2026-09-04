@@ -48,6 +48,12 @@ async function sendUserMessage(text) {
             sessionStorage.setItem("budget_" + sessionId, String(userBudgetRupees));
         }
 
+        // Tag this response so the message renderer knows it was a real catalog search,
+        // not a greeting — enabling the no-results empty state.
+        const _GREETINGS = new Set(["hi", "hello", "hey", "hi there", "greetings", "good morning", "good evening"]);
+        data._searched = !_GREETINGS.has(text.trim().toLowerCase());
+        data._query    = text.trim();
+
         if (data.cart_id) {
             activeCartId = data.cart_id;
             if (data.cart_summary?.items) {
@@ -97,7 +103,7 @@ async function addSuggestionToCart(productId, name, priceRupees, cardElemId) {
         activeCartId = data.cart_id;
         const card = document.getElementById(cardElemId);
         if (card) {
-            card.innerHTML = `<div class="text-xs font-medium py-1 text-amber-800">✨ Added (Requires opt-in accept)</div>`;
+            card.innerHTML = `<div class="text-xs font-medium py-1 text-amber-800">Added (Requires opt-in accept)</div>`;
         }
         await fetchCartFromBackend();
     } catch (err) {

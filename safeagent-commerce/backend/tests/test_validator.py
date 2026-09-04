@@ -78,7 +78,7 @@ async def seed_products(test_db: AsyncSession):
         name="Expensive Luxury Watch",
         sku="LUX-WATCH-1",
         category="electronics",
-        price_paisa=600000,  # ₹6,000.00 (Exceeds ₹5,000 PER_TX_LIMIT)
+        price_paisa=1200000,  # ₹12,000.00 (Exceeds ₹10,000 PER_TX_LIMIT)
         currency="INR",
         stock_quantity=5,
         is_active=True,
@@ -229,9 +229,9 @@ async def test_validator_tx_limit_exceeded(test_db: AsyncSession, seed_products)
 
     item = CartItem(
         cart_id=cart.id,
-        product_id=4,  # Price is ₹6,000 (600000 paisa), limit is ₹5,000 (500000 paisa)
+        product_id=4,  # Price is ₹12,000 (1200000 paisa), limit is ₹10,000 (1000000 paisa)
         quantity=1,
-        charged_price_paisa=600000,
+        charged_price_paisa=1200000,
     )
     test_db.add(item)
     await test_db.commit()
@@ -247,7 +247,7 @@ async def test_validator_tx_limit_exceeded(test_db: AsyncSession, seed_products)
 # ── TEST 7: DAILY_LIMIT_EXCEEDED ──────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_validator_daily_limit_exceeded(test_db: AsyncSession, seed_products):
-    # Create an existing order for today totaling ₹8,000 (800000 paisa)
+    # Create an existing order for today totaling ₹18,000 (1800000 paisa)
     cart_old = Cart(session_id="sess_daily_user", status=CartStatus.PAID)
     test_db.add(cart_old)
     await test_db.commit()
@@ -255,13 +255,13 @@ async def test_validator_daily_limit_exceeded(test_db: AsyncSession, seed_produc
     prior_order = Order(
         cart_id=cart_old.id,
         idempotency_key="prior_order_1",
-        amount_paisa=800000,
+        amount_paisa=1800000,
         status=OrderStatus.CAPTURED,
         session_id="sess_daily_user",
     )
     test_db.add(prior_order)
 
-    # Now create new cart for ₹3,000 (300000 paisa) -> Total = ₹11,000 > ₹10,000 DAILY_CEILING
+    # Now create new cart for ₹3,000 (300000 paisa) -> Total = ₹21,000 > ₹20,000 DAILY_CEILING
     cart_new = Cart(session_id="sess_daily_user", status=CartStatus.OPEN)
     test_db.add(cart_new)
     await test_db.commit()

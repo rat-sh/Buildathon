@@ -123,7 +123,7 @@ function showPaymentSuccess(result) {
     div.innerHTML = `
         <div class="max-w-lg rounded-xl px-5 py-4 border text-center space-y-1"
              style="background: var(--color-success-bg); borderColor: var(--color-success-border);">
-            <p class="text-sm font-semibold text-emerald-800">✅ Payment Successful!</p>
+            <p class="text-sm font-semibold text-emerald-800">Payment Successful!</p>
             <p class="text-xs text-emerald-700">
                 ₹${result.amount_rupees.toLocaleString("en-IN")} charged · Order #${result.order_id}
             </p>

@@ -31,9 +31,13 @@ async function runAnalysis(question) {
     resultEl.textContent = "Querying audit_events…";
 
     try {
+        const headers = { "Content-Type": "application/json" };
+        if (window.ADMIN_API_KEY) {
+            headers["X-Admin-Key"] = window.ADMIN_API_KEY;
+        }
         const res = await fetch("/admin/audit/analyze", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ question: q }),
         });
         if (!res.ok) throw new Error("HTTP " + res.status);

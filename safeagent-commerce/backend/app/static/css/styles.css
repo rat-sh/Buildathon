@@ -272,3 +272,138 @@ body {
 .validator-active-pill {
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
 }
+
+/* ── No-results empty state ─────────────────────────────────────────────── */
+.no-results-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  animation: fadeSlideUp 0.3s ease-out forwards;
+}
+
+.no-results-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #e0e7ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  font-size: 1.5rem;
+}
+
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.suggestion-chip:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18);
+}
+
+/* ── Payment flow step tracker ──────────────────────────────────────────── */
+.payment-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0.6rem 1rem;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+  position: relative;
+}
+
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 55%;
+  right: -45%;
+  height: 1.5px;
+  background: var(--color-border);
+  z-index: 0;
+}
+
+.step-item.done:not(:last-child)::after,
+.step-item.active:not(:last-child)::after {
+  background: linear-gradient(90deg, #2563eb, #cbd5e1);
+}
+
+.step-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border: 2px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-muted-foreground);
+  z-index: 1;
+  transition: all 0.2s ease;
+}
+
+.step-item.done .step-dot {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.step-item.active .step-dot {
+  background: white;
+  border-color: #2563eb;
+  color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.step-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.step-item.done .step-label,
+.step-item.active .step-label {
+  color: #2563eb;
+}
+
+/* ── Razorpay pay button pulse animation ──────────────────────────────── */
+@keyframes pulseGreen {
+  0%, 100% { box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35); }
+  50% { box-shadow: 0 4px 20px rgba(13, 148, 136, 0.6), 0 0 0 4px rgba(13, 148, 136, 0.12); }
+}
+
+.checkout-btn.pay-now {
+  background: linear-gradient(135deg, var(--color-accent) 0%, #0f766e 100%);
+  animation: pulseGreen 2s ease-in-out infinite;
+}

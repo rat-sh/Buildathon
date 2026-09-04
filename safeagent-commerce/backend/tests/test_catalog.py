@@ -117,7 +117,7 @@ async def test_catalog_agent_mcp_tools(test_db: AsyncSession, seed_data):
     # 3. get_spending_limits
     limits = await CatalogAgent.get_spending_limits(is_ai_buyer=True)
     assert limits["buyer_type"] == "ai"
-    assert limits["per_tx_limit_rupees"] == 2000.0
+    assert limits["per_tx_limit_rupees"] == 5000.0
 
     # 4. create_purchase_intent
     intent = await CatalogAgent.create_purchase_intent(
