@@ -9,14 +9,14 @@
 ## Executive Summary & Buildathon Review Scorecard
 
 | Dimension | Rating & Assessment Highlights |
-|-----------|-------|--------------------------------|
-| **Financial Safety** | **Production-grade.** 7-check deterministic validator gate + HMAC pass tokens. Zero LLM in payment path. |
-| **Architecture** | Multi-agent privilege separation (Shopping, Suggestion, Catalog, Validator, Payment). |
-| **System Flow** | Idempotent capture, atomic cart locking, full end-to-end audit trace. |
-| **Presentation** | Demo-ready with dark theme, trust badges, live status indicators & audit trail. |
-| **AI Chat Quality** | Genuinely conversational search & budget guidance with LLM; deterministic fallback. |
-| **UI/UX & Browse** | Dark theme chat + cart sidebar; focus on conversational shopping interface. |
-| **Real-World Usefulness**| Killer AI assistant concept for shoppers; needs multi-tenant onboarding for retail shop owners. |
+|---|---|
+| **Financial Safety** | **Production-oriented.** Uses a 7-check deterministic validator gate and HMAC-based authorization tokens. No LLM is involved in the critical payment execution path. |
+| **Architecture** | **Strong privilege separation.** Uses dedicated agents for Shopping, Suggestions, Catalog, Validation, and Payment, with clearly defined responsibilities. |
+| **System Flow** | **Reliable & auditable.** Supports idempotent payment capture, atomic cart locking, and an end-to-end audit trail for transaction tracking. |
+| **Presentation** | **Demo-ready.** Features a polished dark-themed interface with trust indicators, live transaction status, and a visible audit trail. |
+| **AI Chat Quality** | **Conversational & practical.** LLM-powered shopping search and budget guidance with deterministic fallback mechanisms for reliability. |
+| **UI/UX & Browsing** | **Conversational shopping experience.** Combines an AI chat interface with a persistent cart sidebar for seamless product discovery and checkout. |
+| **Real-World Usefulness** | **High potential.** Provides a practical AI shopping assistant focused on safer agentic commerce. A future enhancement would be multi-tenant onboarding and management tools for retail businesses. |
 
 ---
 
