@@ -98,16 +98,25 @@ function buildNoResultsCard(searchQuery) {
         </div>`;
 }
 
-function buildProductCard(p) {
+function buildProductCard(p, isAboveBudget = false) {
     const inCart = cartItems.some(i => i.product_id === p.id);
+    const budgetBadge = isAboveBudget ? `
+        <span class="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+              style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+            Above Budget
+        </span>` : "";
+    const cardBorder = isAboveBudget ? "border: 1px solid #fde68a;" : "";
     return `
-        <div class="product-card rounded-xl p-4 flex flex-col gap-3" style="background: var(--color-card);">
+        <div class="product-card rounded-xl p-4 flex flex-col gap-3" style="background: var(--color-card); ${cardBorder}">
             <div class="product-card-thumb">${productIcon()}</div>
             <div>
-                <span class="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                      style="background: var(--color-success-bg); color: var(--color-success);">
-                    ${p.stock_quantity} in stock
-                </span>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                          style="background: var(--color-success-bg); color: var(--color-success);">
+                        ${p.stock_quantity} in stock
+                    </span>
+                    ${budgetBadge}
+                </div>
                 <p class="text-sm font-semibold mt-2" style="color: var(--color-foreground);">${escapeHtml(p.name)}</p>
                 <p class="text-xs mt-1 leading-relaxed line-clamp-2" style="color: var(--color-muted-foreground);">
                     ${escapeHtml(p.description || p.category || "")}
@@ -157,7 +166,18 @@ function appendAIMessage(data) {
     let body = `<div class="ai-bubble rounded-2xl rounded-tl-md px-4 py-3.5 text-sm leading-relaxed" style="color: var(--color-foreground);">${escapeHtml(data.reply)}</div>`;
 
     if (data.products?.length > 0) {
-        const cards = data.products.map(buildProductCard).join("");
+        if (data.is_above_budget) {
+            const bRupees = data.budget_rupees ? formatINR(data.budget_rupees) : "your budget";
+            body += `
+                <div class="mt-3 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2 font-medium"
+                     style="background: #fffbeb; color: #92400e; border: 1px solid #fde68a;">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="#d97706" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    No items in catalog under ${bRupees}. Showing closest available options:
+                </div>`;
+        }
+        const cards = data.products.map(p => buildProductCard(p, data.is_above_budget)).join("");
         body += `<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-3">${cards}</div>`;
     } else if (data._searched) {
         body += buildNoResultsCard(data._query);

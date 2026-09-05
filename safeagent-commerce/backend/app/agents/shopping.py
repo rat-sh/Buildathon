@@ -35,7 +35,7 @@ class ShoppingAgent:
         category: Optional[str] = None,
         max_price_rupees: Optional[float] = None,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
         Search catalog using natural language prompt or structured parameters.
 
@@ -47,7 +47,14 @@ class ShoppingAgent:
             limit: Maximum items to return
 
         Returns:
-            List of matching real products from database
+            Dict containing matching real products and match tier metadata:
+            {
+                "products": [...],
+                "match_tier": "exact_match" | "relaxed_keywords" | "above_budget" | "category_only" | "no_match",
+                "is_above_budget": bool,
+                "budget_rupees": float | None,
+                "count": int
+            }
         """
         logger.info("ShoppingAgent searching catalog", prompt=prompt)
 
@@ -56,7 +63,11 @@ class ShoppingAgent:
 
         target_category = category or intent.get("category")
         max_price_paisa = int(max_price_rupees * 100) if max_price_rupees else intent.get("max_price_paisa")
+        effective_max_price_rupees = (max_price_paisa / 100) if max_price_paisa else max_price_rupees
         keywords = intent.get("query", prompt).split()
+
+        match_tier = "no_match"
+        is_above_budget = False
 
         # Query live DB: Product MUST be active and in stock
         stmt = select(Product).where(
@@ -91,6 +102,8 @@ class ShoppingAgent:
 
         stmt = stmt.limit(limit)
         results = (await db.execute(stmt)).scalars().all()
+        if results:
+            match_tier = "exact_match"
 
         # Fallback 1: relax keyword AND → OR (in case AND is too strict for a single word)
         if not results and keywords:
@@ -118,9 +131,11 @@ class ShoppingAgent:
                 relaxed_stmt = relaxed_stmt.where(or_(*kw_or_conditions))
             relaxed_stmt = relaxed_stmt.limit(limit)
             results = (await db.execute(relaxed_stmt)).scalars().all()
+            if results:
+                match_tier = "relaxed_keywords"
 
         # Fallback 2: If still empty and a price filter is active, drop it so we can
-        # at least show products that exist. The LLM will explain they're over budget.
+        # at least show products that exist. Flag as above_budget so downstream components don't lie.
         if not results and max_price_paisa:
             noprice_stmt = select(Product).where(
                 Product.is_active == True,
@@ -146,6 +161,8 @@ class ShoppingAgent:
             noprice_stmt = noprice_stmt.limit(limit)
             results = (await db.execute(noprice_stmt)).scalars().all()
             if results:
+                match_tier = "above_budget"
+                is_above_budget = True
                 logger.info(
                     "ShoppingAgent: price fallback used — items found above budget",
                     max_price_paisa=max_price_paisa,
@@ -165,6 +182,10 @@ class ShoppingAgent:
 
             fallback_stmt = fallback_stmt.limit(limit)
             results = (await db.execute(fallback_stmt)).scalars().all()
+            if results:
+                match_tier = "category_only"
+                if max_price_paisa and any(p.price_paisa > max_price_paisa for p in results):
+                    is_above_budget = True
 
         output = []
         for p in results:
@@ -182,5 +203,16 @@ class ShoppingAgent:
                 "attributes": p.attributes_json,
             })
 
-        logger.info("ShoppingAgent search completed", results_count=len(output))
-        return output
+        logger.info(
+            "ShoppingAgent search completed",
+            results_count=len(output),
+            match_tier=match_tier,
+            is_above_budget=is_above_budget,
+        )
+        return {
+            "products": output,
+            "match_tier": match_tier,
+            "is_above_budget": is_above_budget,
+            "budget_rupees": effective_max_price_rupees,
+            "count": len(output),
+        }

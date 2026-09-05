@@ -74,11 +74,27 @@ async def seed_data(test_db: AsyncSession):
 @pytest.mark.asyncio
 async def test_shopping_agent_search(test_db: AsyncSession, seed_data):
     agent = ShoppingAgent()
-    results = await agent.search_catalog(test_db, prompt="running shoes under 4000")
+    search_res = await agent.search_catalog(test_db, prompt="running shoes under 4000")
+    results = search_res["products"]
 
     assert len(results) >= 1
     assert results[0]["id"] == 1
     assert results[0]["price_paisa"] == 399900
+    assert search_res["is_above_budget"] is False
+    assert search_res["match_tier"] in ("exact_match", "relaxed_keywords")
+
+
+@pytest.mark.asyncio
+async def test_shopping_agent_over_budget_fallback(test_db: AsyncSession, seed_data):
+    agent = ShoppingAgent()
+    # Seed shoe costs ₹3999 (399900 paisa), query for max ₹2000
+    search_res = await agent.search_catalog(test_db, prompt="running shoes under 2000")
+    results = search_res["products"]
+
+    assert len(results) >= 1
+    assert results[0]["id"] == 1
+    assert search_res["is_above_budget"] is True
+    assert search_res["match_tier"] == "above_budget"
 
 
 # ── TEST 2: SuggestionAgent Recommendations (explicitly_accepted=False) ──────

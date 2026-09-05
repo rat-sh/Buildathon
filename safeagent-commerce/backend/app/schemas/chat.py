@@ -50,6 +50,8 @@ class ChatMessageResponse(BaseModel):
     session_id: str
     cart_id: Optional[int] = None
     budget_rupees: Optional[float] = None
+    is_above_budget: bool = False
+    match_tier: Optional[str] = None
     products: List[Dict[str, Any]] = Field(default_factory=list)
     suggestions: List[Dict[str, Any]] = Field(default_factory=list)
     cart_summary: Optional[Dict[str, Any]] = None

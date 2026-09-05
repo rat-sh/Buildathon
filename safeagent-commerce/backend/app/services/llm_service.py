@@ -43,6 +43,8 @@ class LLMService:
         products: List[Dict[str, Any]],
         budget_rupees: Optional[float] = None,
         is_greeting: bool = False,
+        match_tier: str = "exact_match",
+        is_above_budget: bool = False,
     ) -> str:
         """
         Generate a warm, natural ChatGPT-style reply combining conversational guidance
@@ -56,7 +58,9 @@ class LLMService:
             )
 
         if not self.client:
-            return self._fallback_reply(user_message, products, budget_rupees)
+            return self._fallback_reply(
+                user_message, products, budget_rupees, match_tier=match_tier, is_above_budget=is_above_budget
+            )
 
         prod_summaries = []
         for p in products[:5]:
@@ -68,6 +72,17 @@ class LLMService:
         catalog_ctx = "\n".join(prod_summaries) if prod_summaries else "No matching products in catalog."
         budget_ctx = f"\nUser budget: ₹{budget_rupees:,.0f}" if budget_rupees else ""
 
+        if is_above_budget:
+            budget_guideline = (
+                f"CRITICAL: None of our catalog products fit the user's budget of ₹{budget_rupees:,.0f}. "
+                "The products below are ABOVE their budget. "
+                f"You MUST clearly state that no items fit within their budget of ₹{budget_rupees:,.0f}, "
+                "and introduce these as the closest available options above their budget. "
+                "NEVER say or imply these items fit their requested budget."
+            )
+        else:
+            budget_guideline = "Respect the user's stated budget when discussing options — never assume they only have ₹10,000."
+
         system_prompt = (
             "You are a warm, calm, helpful AI Shopping Assistant for SafeAgent Commerce. "
             "You speak with the reassuring, steady tone of a good ChatGPT shopping advisor. "
@@ -75,9 +90,9 @@ class LLMService:
             "Guidelines:\n"
             "1. Reply warmly and naturally to the user's prompt.\n"
             "2. If products are found, introduce them naturally and explain briefly why they fit the user's request.\n"
-            "3. Respect the user's stated budget when discussing options — never assume they only have ₹10,000.\n"
+            f"3. {budget_guideline}\n"
             "4. Keep responses concise (2 to 4 sentences), polite, and natural. Never invent prices or fake items.\n\n"
-            f"Matching Catalog Products:\n{catalog_ctx}{budget_ctx}"
+            f"Catalog Products:\n{catalog_ctx}{budget_ctx}"
         )
 
         try:
@@ -96,18 +111,30 @@ class LLMService:
         except Exception as e:
             logger.warning("LLM reply generation failed, using fallback", error=str(e))
 
-        return self._fallback_reply(user_message, products, budget_rupees)
+        return self._fallback_reply(
+            user_message, products, budget_rupees, match_tier=match_tier, is_above_budget=is_above_budget
+        )
 
     def _fallback_reply(
         self,
         user_message: str,
         products: List[Dict[str, Any]],
         budget_rupees: Optional[float] = None,
+        match_tier: str = "exact_match",
+        is_above_budget: bool = False,
     ) -> str:
         """Clean fallback reply when OpenAI key is absent."""
-        budget_note = f" (within your ₹{budget_rupees:,.0f} budget)" if budget_rupees else ""
         if not products:
             return "I couldn't find exact matches in our catalog for that request. Feel free to search for running shoes, socks, protein, or insoles!"
+        
+        if is_above_budget:
+            budget_str = f" under ₹{budget_rupees:,.0f}" if budget_rupees else ""
+            min_price = min(p.get("price_rupees", 0) for p in products) if products else 0
+            if len(products) == 1:
+                return f"We don't have items in stock{budget_str}. Here is our closest option starting at ₹{min_price:,.0f}: {products[0].get('name', 'Product')}."
+            return f"We couldn't find options in our catalog{budget_str}. Here are the closest available choices (starting at ₹{min_price:,.0f}):"
+
+        budget_note = f" (within your ₹{budget_rupees:,.0f} budget)" if budget_rupees else ""
         if len(products) == 1:
             return f"I found a great option{budget_note}: {products[0].get('name', 'Product')}."
         return f"Here are {len(products)} relevant items{budget_note} that match your search:"

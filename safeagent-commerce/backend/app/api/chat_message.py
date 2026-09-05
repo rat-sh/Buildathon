@@ -44,9 +44,12 @@ async def chat_message(
 
     budget_rupees = resolve_budget_rupees(req.budget_rupees, req.message)
 
-    products = await shopping_agent.search_catalog(
+    search_result = await shopping_agent.search_catalog(
         db, prompt=req.message, max_price_rupees=budget_rupees,
     )
+    products = search_result.get("products", [])
+    match_tier = search_result.get("match_tier", "exact_match")
+    is_above_budget = search_result.get("is_above_budget", False)
 
     cart_id = req.cart_id
     cart_summary = None
@@ -95,12 +98,19 @@ async def chat_message(
             "message": req.message,
             "products_found": len(products),
             "budget_rupees": budget_rupees,
+            "match_tier": match_tier,
+            "is_above_budget": is_above_budget,
         },
         message=f"Customer chat: '{req.message}'",
     )
 
     reply = await llm_service.generate_conversational_reply(
-        req.message, products, budget_rupees=budget_rupees, is_greeting=is_greeting,
+        req.message,
+        products,
+        budget_rupees=budget_rupees,
+        is_greeting=is_greeting,
+        match_tier=match_tier,
+        is_above_budget=is_above_budget,
     )
 
     if not budget_rupees and not is_greeting and not products:
@@ -113,6 +123,8 @@ async def chat_message(
         session_id=session_id,
         cart_id=cart_id,
         budget_rupees=budget_rupees,
+        is_above_budget=is_above_budget if not is_greeting else False,
+        match_tier=match_tier if not is_greeting else None,
         products=displayed_products,
         suggestions=suggestions if not is_greeting else [],
         cart_summary=cart_summary,
