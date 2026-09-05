@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -110,6 +110,14 @@ class AuditEvent(Base):
 
     # ── Human-readable message ────────────────────────────────────────────────
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # ── SOC Security Metadata & Mock Separation ──────────────────────────────
+    is_mock: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, index=True
+    )
+    threat_level: Mapped[str] = mapped_column(
+        String(20), default="LOW", nullable=False, index=True
+    )
 
     # ── Immutable timestamp ───────────────────────────────────────────────────
     # No updated_at — this record must never change after insertion

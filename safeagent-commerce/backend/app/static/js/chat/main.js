@@ -9,14 +9,28 @@
  */
 
 // ── Shared state (read by all modules) ───────────────────────────────────────
-const sessionId   = document.getElementById("chat-root").dataset.sessionId;
-let activeCartId  = null;
+const serverSessionId = document.getElementById("chat-root")?.dataset?.sessionId;
+let sessionId = localStorage.getItem("safeagent_session_id") || serverSessionId;
+if (sessionId) {
+    localStorage.setItem("safeagent_session_id", sessionId);
+}
+let activeCartId = (() => {
+    const stored = localStorage.getItem("safeagent_cart_id");
+    return stored ? parseInt(stored, 10) : null;
+})();
 let cartItems     = [];
 let checkoutState = "idle";
 let userBudgetRupees = (() => {
     const stored = sessionStorage.getItem("budget_" + sessionId);
     return stored ? parseFloat(stored) : null;
 })();
+
+// Restore cart on navigation if activeCartId exists
+document.addEventListener("DOMContentLoaded", async () => {
+    if (activeCartId) {
+        await fetchCartFromBackend();
+    }
+});
 
 // ── Input wiring ──────────────────────────────────────────────────────────────
 const chatInput = document.getElementById("chat-input");
@@ -56,6 +70,7 @@ async function sendUserMessage(text) {
 
         if (data.cart_id) {
             activeCartId = data.cart_id;
+            localStorage.setItem("safeagent_cart_id", String(activeCartId));
             if (data.cart_summary?.items) {
                 cartItems = data.cart_summary.items;
                 if (data.cart_summary.status === "paid") checkoutState = "paid";
@@ -84,6 +99,7 @@ async function addToCart(productId, name, priceRupees) {
     try {
         const data = await apiAddToCart(productId, sessionId, activeCartId);
         activeCartId = data.cart_id;
+        localStorage.setItem("safeagent_cart_id", String(activeCartId));
         const btn = document.getElementById("add-btn-" + productId);
         if (btn) {
             btn.disabled = true;
@@ -101,6 +117,7 @@ async function addSuggestionToCart(productId, name, priceRupees, cardElemId) {
     try {
         const data = await apiAddSuggestion(productId, sessionId, activeCartId);
         activeCartId = data.cart_id;
+        localStorage.setItem("safeagent_cart_id", String(activeCartId));
         const card = document.getElementById(cardElemId);
         if (card) {
             card.innerHTML = `<div class="text-xs font-medium py-1 text-amber-800">Added (Requires opt-in accept)</div>`;

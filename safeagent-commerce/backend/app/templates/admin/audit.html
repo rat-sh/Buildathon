@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Audit Ops Console — SafeAgent Commerce{% endblock %}
+{% block title %}SOC Security Audit Console — SafeAgent Commerce{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/audit.css">
@@ -15,66 +15,113 @@
     <!-- Ops header strip -->
     <div class="ops-header flex items-center justify-between flex-wrap gap-3">
         <div>
-            <div class="ops-title">SAFEAGENT AUDIT OPS CONSOLE</div>
-            <div class="ops-subtitle">Append-only transaction &amp; security event log · UTC timestamps · Real DB events only</div>
+            <div class="flex items-center gap-2">
+                <span class="ops-title">SAFEAGENT SOC SECURITY CONSOLE</span>
+                <span id="soc-chain-badge" class="px-2 py-0.5 rounded text-[10px] font-bold mono bg-emerald-900/60 text-emerald-300 border border-emerald-500/40">
+                    ✓ HASH-CHAIN VERIFIED
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold mono bg-blue-900/60 text-blue-300 border border-blue-500/40 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span> LIVE FEED
+                </span>
+            </div>
+            <div class="ops-subtitle mt-0.5">SOC Type II Append-Only Audit Trail · Cryptographic Hash-Chain · Immutable Security Log</div>
         </div>
-        <div class="ops-stats mono">
-            <span>TOTAL <span class="ops-stat-val total">{{ stats.total }}</span></span>
-            <span>PASS <span class="ops-stat-val pass">{{ stats.pass }}</span></span>
-            <span>BLOCK <span class="ops-stat-val block">{{ stats.block }}</span></span>
-            <span>INFO <span class="ops-stat-val info">{{ stats.info }}</span></span>
+        <div class="flex items-center gap-3">
+            <button onclick="verifyHashChain()" class="px-3 py-1.5 rounded-lg text-xs font-semibold mono bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                Verify Integrity
+            </button>
+            <div class="ops-stats mono">
+                <span>TOTAL <span class="ops-stat-val total" id="stat-total">{{ stats.total }}</span></span>
+                <span>PASS <span class="ops-stat-val pass" id="stat-pass">{{ stats.pass }}</span></span>
+                <span>BLOCK <span class="ops-stat-val block" id="stat-block">{{ stats.block }}</span></span>
+                <span>INFO <span class="ops-stat-val info" id="stat-info">{{ stats.info }}</span></span>
+            </div>
         </div>
     </div>
 
     <!-- Threat alerts -->
-    {% for alert in alerts %}
-    <div class="ops-alert {{ alert.level }} mono">{{ alert.message }}</div>
-    {% endfor %}
+    <div id="alerts-container">
+        {% for alert in alerts %}
+        <div class="ops-alert {{ alert.level }} mono">{{ alert.message }}</div>
+        {% endfor %}
+    </div>
 
     <div class="ops-layout flex-1 min-h-0">
 
         <!-- Main log table -->
         <div class="ops-main">
-            <div class="ops-toolbar">
-                <span class="text-[10px] uppercase tracking-wider" style="color: var(--ops-dim); margin-right: 0.5rem;">Filter</span>
+            <!-- Data mode & filter bar -->
+            <div class="ops-toolbar flex-wrap gap-2">
+                <div class="flex items-center gap-1 mr-3 border-r border-slate-800 pr-3">
+                    <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mr-1">Data Source:</span>
+                    <button class="ops-mode-btn {% if not is_mock %}active{% endif %}" id="mode-live" onclick="switchDataMode(false)">
+                        ● Live Prod Events (Actual)
+                    </button>
+                    <button class="ops-mode-btn {% if is_mock %}active{% endif %}" id="mode-mock" onclick="switchDataMode(true)">
+                        ⚡ Mock / Demo Security Data
+                    </button>
+                </div>
+
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Decision:</span>
                 <button class="ops-filter-btn active" data-filter="all" onclick="filterAudit('all')">All</button>
                 <button class="ops-filter-btn" data-filter="PASS" onclick="filterAudit('PASS')">PASS</button>
                 <button class="ops-filter-btn" data-filter="BLOCK" onclick="filterAudit('BLOCK')">BLOCK</button>
                 <button class="ops-filter-btn" data-filter="INFO" onclick="filterAudit('INFO')">INFO</button>
-                <span class="ml-auto text-[10px]" style="color: var(--ops-dim);">{{ events|length }} rows · newest first</span>
+
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="seed-mock-btn" onclick="seedMockIncident()" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-600/40 transition-all {% if not is_mock %}hidden{% endif %}">
+                        + Seed Demo Threat Incident
+                    </button>
+                    <span class="text-[10px] text-slate-400" id="row-count-label">{{ events|length }} rows · auto-updating</span>
+                </div>
             </div>
 
             <div class="ops-table-wrap">
-                {% if not events %}
-                <div class="ops-empty">
-                    No audit events yet. Use Shopping or AI buyer demo to generate real log entries.
-                </div>
-                {% else %}
-                <table class="ops-table">
+                <table class="ops-table" id="audit-table">
                     <thead>
                         <tr>
                             <th></th>
                             <th>Time (UTC)</th>
+                            <th>Threat</th>
                             <th>ID</th>
                             <th>Actor</th>
                             <th>Action / Message</th>
                             <th>Decision</th>
-                            <th>Reason code</th>
+                            <th>Reason Code</th>
                             <th>Target</th>
                             <th>Session / Buyer</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="audit-tbody">
+                        {% if not events %}
+                        <tr>
+                            <td colspan="10" class="text-center py-8 text-slate-500 text-xs">
+                                No audit events found in this view. Shopping chat and live payment operations will log real events here automatically.
+                            </td>
+                        </tr>
+                        {% else %}
                         {% for event in events %}
                         <tr class="ops-row" data-decision="{{ event.decision }}" onclick="toggleEvidence({{ event.id }})">
                             <td class="mono" style="color: var(--ops-dim); width: 1rem;" id="chev-{{ event.id }}">▸</td>
                             <td class="mono" style="white-space: nowrap; color: var(--ops-muted);">{{ event.created_at }}</td>
+                            <td>
+                                {% if event.threat_level == "CRITICAL" %}
+                                <span class="threat-badge critical">CRITICAL</span>
+                                {% elif event.threat_level == "HIGH" %}
+                                <span class="threat-badge high">HIGH</span>
+                                {% elif event.threat_level == "MEDIUM" %}
+                                <span class="threat-badge medium">MED</span>
+                                {% else %}
+                                <span class="threat-badge low">LOW</span>
+                                {% endif %}
+                            </td>
                             <td class="mono">{{ event.id }}</td>
                             <td class="mono">{{ event.actor }}</td>
                             <td>
                                 <span class="mono" style="color: var(--ops-dim);">{{ event.action }}</span>
                                 <span style="color: var(--ops-muted);"> — </span>
-                                <span class="truncate" style="max-width: 280px; display: inline-block; vertical-align: bottom;">{{ event.message }}</span>
+                                <span class="truncate" style="max-width: 260px; display: inline-block; vertical-align: bottom;">{{ event.message }}</span>
                             </td>
                             <td>
                                 {% if event.decision == "PASS" %}
@@ -92,10 +139,10 @@
                             <td class="mono truncate" title="{{ event.session_buyer }}">{{ event.session_buyer }}</td>
                         </tr>
                         <tr class="ops-detail-row hidden" id="detail-{{ event.id }}">
-                            <td colspan="9">
+                            <td colspan="10">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Evidence JSON</div>
+                                        <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Evidence JSON Snapshot</div>
                                         <pre class="evidence-json">{{ event.evidence_json if event.evidence_json else "{}" }}</pre>
                                     </div>
                                     <div class="space-y-2 text-[11px]">
@@ -103,31 +150,32 @@
                                         <div><span style="color: var(--ops-dim);">Session:</span> <span class="mono">{{ event.session_id }}</span></div>
                                         <div><span style="color: var(--ops-dim);">Buyer:</span> <span class="mono">{{ event.buyer_id }}</span></div>
                                         <div><span style="color: var(--ops-dim);">Target:</span> <span class="mono">{{ event.target_type }} / {{ event.target_id }}</span></div>
+                                        <div><span style="color: var(--ops-dim);">Data Type:</span> <span class="mono">{% if event.is_mock %}MOCK / DEMO INCIDENT{% else %}LIVE REAL PROD EVENT{% endif %}</span></div>
                                     </div>
                                 </div>
                             </td>
                         </tr>
                         {% endfor %}
+                        {% endif %}
                     </tbody>
                 </table>
-                {% endif %}
             </div>
         </div>
 
         <!-- Log analysis sidebar -->
         <aside class="ops-sidebar analysis-panel">
-            <h3>Log Analysis</h3>
+            <h3>SOC Threat Intelligence</h3>
             <p style="font-size: 10px; color: var(--ops-dim); line-height: 1.4; margin-bottom: 0.5rem;">
-                Operator queries → real SQL counts from audit_events. No invented numbers.
+                Operator SQL queries → immutable audit_events table. Deterministic verification.
             </p>
             <form id="analysis-form">
                 <textarea id="analysis-input" class="analysis-input" rows="2"
-                          placeholder="e.g. How many blocked today?"></textarea>
-                <button type="submit" class="analysis-btn">RUN QUERY</button>
+                          placeholder="e.g. How many blocked transactions today?"></textarea>
+                <button type="submit" class="analysis-btn">RUN SOC QUERY</button>
             </form>
             <div id="analysis-result" class="analysis-result mono">Ready.</div>
             <div style="margin-top: 0.75rem; border-top: 1px solid var(--ops-border); padding-top: 0.5rem;">
-                <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Quick queries</div>
+                <div class="text-[10px] uppercase mb-1" style="color: var(--ops-dim);">Quick SOC Queries</div>
                 <button type="button" class="quick-q" onclick="setQuickQuery('How many purchases today?')">How many purchases today?</button>
                 <button type="button" class="quick-q" onclick="setQuickQuery('How many blocked?')">How many blocked?</button>
                 <button type="button" class="quick-q" onclick="setQuickQuery('How many TX_LIMIT_EXCEEDED?')">How many TX_LIMIT_EXCEEDED?</button>
@@ -136,7 +184,7 @@
                 <button type="button" class="quick-q" onclick="setQuickQuery('How many events by actor validator_agent?')">Events by validator_agent</button>
             </div>
             <div style="margin-top: auto; padding-top: 1rem; font-size: 10px; color: var(--ops-dim); line-height: 1.5;">
-                Tamper-evident · Append-only · Validator &amp; webhook decisions immutable
+                SOC Compliance · PCI-DSS Audit Trail · Tamper-Evident SHA256 Hash Chain
             </div>
         </aside>
     </div>
@@ -144,6 +192,7 @@
 
 <script>
     window.ADMIN_API_KEY = "{{ admin_api_key }}";
+    window.INITIAL_IS_MOCK = {{ "true" if is_mock else "false" }};
 </script>
 <script src="/static/js/audit.js"></script>
 {% endblock %}

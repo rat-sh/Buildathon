@@ -42,29 +42,27 @@ class AuditService:
         target_id: Optional[str] = None,
         evidence: Optional[Dict[str, Any]] = None,
         message: Optional[str] = None,
+        is_mock: bool = False,
+        threat_level: Optional[str] = None,
     ) -> AuditEvent:
         """
         Append a single structured audit event to the DB.
-
-        Args:
-            db: Async database session
-            actor: Component taking action (e.g. validator_agent, payment_agent, shopping_agent)
-            action: Action string (e.g. validate_cart, create_order, webhook_received)
-            decision: AuditDecision enum or string ("PASS", "BLOCK", "INFO", "ERROR")
-            session_id: Optional human session ID
-            buyer_id: Optional AI buyer ID
-            reason_code: Optional Validator reason code (e.g. PRICE_MISMATCH)
-            target_type: Entity type (cart, order, product)
-            target_id: Entity ID
-            evidence: Raw dictionary of evidence parameters (serialized to JSON)
-            message: Human-readable explanation
-
-        Returns:
-            The created AuditEvent DB instance
         """
         # Convert string decision to AuditDecision enum if needed
         if isinstance(decision, str):
             decision = AuditDecision(decision.upper())
+
+        # Determine threat level if not specified
+        if not threat_level:
+            if decision == AuditDecision.BLOCK or decision == AuditDecision.ERROR:
+                if reason_code in ("INVALID_HMAC_SIGNATURE", "REPLAY_ATTACK_DETECTED"):
+                    threat_level = "CRITICAL"
+                elif reason_code in ("TX_LIMIT_EXCEEDED", "DAILY_LIMIT_EXCEEDED", "CART_ALREADY_PAID"):
+                    threat_level = "HIGH"
+                else:
+                    threat_level = "MEDIUM"
+            else:
+                threat_level = "LOW"
 
         evidence_json_str = None
         if evidence:
@@ -85,6 +83,8 @@ class AuditService:
             target_id=str(target_id) if target_id is not None else None,
             evidence_json=evidence_json_str,
             message=message,
+            is_mock=is_mock,
+            threat_level=threat_level,
         )
 
         db.add(event)
@@ -98,6 +98,8 @@ class AuditService:
             action=action,
             decision=event.decision.value,
             reason_code=reason_code,
+            is_mock=is_mock,
+            threat_level=threat_level,
         )
 
         return event
@@ -108,6 +110,7 @@ class AuditService:
         result: ValidationResult,
         session_id: Optional[str] = None,
         buyer_id: Optional[str] = None,
+        is_mock: bool = False,
     ) -> AuditEvent:
         """
         Helper method specifically for logging a ValidatorAgent result.
@@ -125,6 +128,7 @@ class AuditService:
             target_id=str(result.cart_id),
             evidence=result.evidence,
             message=result.message,
+            is_mock=is_mock,
         )
 
     @staticmethod
@@ -136,12 +140,18 @@ class AuditService:
         decision: Optional[str] = None,
         session_id: Optional[str] = None,
         buyer_id: Optional[str] = None,
+        is_mock: Optional[bool] = False,
+        threat_level: Optional[str] = None,
     ) -> List[AuditEvent]:
         """
         Query audit events with filtering. Read-Only access.
+        If is_mock is None, returns both mock and real events.
+        If is_mock is False (default), returns real production events only.
         """
         stmt = select(AuditEvent).order_by(desc(AuditEvent.id))
 
+        if is_mock is not None:
+            stmt = stmt.where(AuditEvent.is_mock == is_mock)
         if actor:
             stmt = stmt.where(AuditEvent.actor == actor)
         if decision:
@@ -150,6 +160,8 @@ class AuditService:
             stmt = stmt.where(AuditEvent.session_id == session_id)
         if buyer_id:
             stmt = stmt.where(AuditEvent.buyer_id == buyer_id)
+        if threat_level:
+            stmt = stmt.where(AuditEvent.threat_level == threat_level.upper())
 
         stmt = stmt.offset(offset).limit(limit)
         results = await db.execute(stmt)

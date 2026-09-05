@@ -290,5 +290,40 @@
   font-size: 12px;
 }
 
+.ops-console .ops-mode-btn {
+  padding: 0.25rem 0.65rem;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--ops-border);
+  background: transparent;
+  color: var(--ops-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.ops-console .ops-mode-btn:hover { color: var(--ops-text); border-color: var(--ops-dim); }
+.ops-console .ops-mode-btn.active {
+  background: #1e293b;
+  color: #38bdf8;
+  border-color: #0284c7;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.15);
+}
+
+.ops-console .threat-badge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ops-console .threat-badge.critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+.ops-console .threat-badge.high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+.ops-console .threat-badge.medium { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+.ops-console .threat-badge.low { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+
 .ops-console .mono { font-family: 'JetBrains Mono', monospace; }
 .ops-console .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

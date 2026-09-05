@@ -47,10 +47,10 @@ async def chat_view(request: Request):
 
 
 @router.get("/admin/audit")
-async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
-    """Render ops-console audit log viewer."""
+async def audit_view(request: Request, is_mock: bool = False, db: AsyncSession = Depends(get_db)):
+    """Render ops-console audit log viewer. Defaults to live real events (is_mock=False)."""
     from app.core.config import settings
-    events = await AuditService.get_events(db=db, limit=200)
+    events = await AuditService.get_events(db=db, limit=200, is_mock=is_mock)
     stats = await get_summary_stats(db)
     alerts = await get_threat_alerts(db)
 
@@ -78,6 +78,8 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
             "session_buyer": e.buyer_id or e.session_id or "—",
             "evidence_json": evidence_str,
             "message": e.message or "—",
+            "is_mock": getattr(e, "is_mock", False),
+            "threat_level": getattr(e, "threat_level", "LOW"),
             "created_at": e.created_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         })
 
@@ -89,6 +91,7 @@ async def audit_view(request: Request, db: AsyncSession = Depends(get_db)):
             "stats": stats,
             "alerts": alerts,
             "active_page": "audit",
+            "is_mock": is_mock,
             "admin_api_key": settings.ADMIN_API_KEY,
         },
     )
