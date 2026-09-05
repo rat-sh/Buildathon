@@ -8,15 +8,15 @@
 
 ## Executive Summary & Buildathon Review Scorecard
 
-| Dimension | Score | Rating & Assessment Highlights |
+| Dimension | Rating & Assessment Highlights |
 |-----------|-------|--------------------------------|
-| **Financial Safety** | ★★★★★ | **Production-grade.** 7-check deterministic validator gate + HMAC pass tokens. Zero LLM in payment path. |
-| **Architecture** | ★★★★☆ | Multi-agent privilege separation (Shopping, Suggestion, Catalog, Validator, Payment). |
-| **System Flow** | ★★★★☆ | Idempotent capture, atomic cart locking, full end-to-end audit trace. |
-| **Presentation** | ★★★★☆ | Demo-ready with dark theme, trust badges, live status indicators & audit trail. |
-| **AI Chat Quality** | ★★★★☆ | Genuinely conversational search & budget guidance with LLM; deterministic fallback. |
-| **UI/UX & Browse** | ★★★☆☆ | Dark theme chat + cart sidebar; focus on conversational shopping interface. |
-| **Real-World Usefulness**| ★★☆☆☆ | Killer AI assistant concept for shoppers; needs multi-tenant onboarding for retail shop owners. |
+| **Financial Safety** | **Production-grade.** 7-check deterministic validator gate + HMAC pass tokens. Zero LLM in payment path. |
+| **Architecture** | Multi-agent privilege separation (Shopping, Suggestion, Catalog, Validator, Payment). |
+| **System Flow** | Idempotent capture, atomic cart locking, full end-to-end audit trace. |
+| **Presentation** | Demo-ready with dark theme, trust badges, live status indicators & audit trail. |
+| **AI Chat Quality** | Genuinely conversational search & budget guidance with LLM; deterministic fallback. |
+| **UI/UX & Browse** | Dark theme chat + cart sidebar; focus on conversational shopping interface. |
+| **Real-World Usefulness**| Killer AI assistant concept for shoppers; needs multi-tenant onboarding for retail shop owners. |
 
 ---
 
